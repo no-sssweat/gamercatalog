@@ -15,7 +15,7 @@
 default.settings.php
 settings.local.php
 services.yml
-#web/sites/default/settings.php
+web/sites/default/settings.php
 # Ignore Drupal's file directory
 /web/sites/*/files/
 
