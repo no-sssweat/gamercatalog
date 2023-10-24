@@ -1,0 +1,13 @@
+name: 'SAML Auth User Fields Mapping'
+type: module
+description: 'Maps custom SAML SSO attributes to user fields.'
+package: 'User authentication'
+core_version_requirement: ^9.2 || ^10
+configure: samlauth_user_fields.list
+dependencies:
+  - samlauth:samlauth
+
+# Information added by Drupal.org packaging script on 2022-09-01
+version: '8.x-3.8'
+project: 'samlauth'
+datestamp: 1662058796

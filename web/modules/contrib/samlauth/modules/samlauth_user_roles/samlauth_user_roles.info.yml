@@ -1,0 +1,13 @@
+name: 'SAML Auth User Role Assignment'
+type: module
+description: 'Assigns roles to users on login.'
+package: 'User authentication'
+core_version_requirement: ^9.2 || ^10
+configure: samlauth_user_roles.configure_form
+dependencies:
+  - samlauth:samlauth
+
+# Information added by Drupal.org packaging script on 2022-09-01
+version: '8.x-3.8'
+project: 'samlauth'
+datestamp: 1662058796
