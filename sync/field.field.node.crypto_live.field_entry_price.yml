@@ -1,0 +1,19 @@
+uuid: 749a28cf-cca5-4052-9b6a-97530303f882
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_entry_price
+    - node.type.crypto_live
+id: node.crypto_live.field_entry_price
+field_name: field_entry_price
+entity_type: node
+bundle: crypto_live
+label: 'Entry Price'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

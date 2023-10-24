@@ -1,0 +1,19 @@
+uuid: cc49edf2-51a1-4ddb-b7fd-8802433bec27
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_exit_price
+    - node.type.crypto
+id: node.crypto.field_exit_price
+field_name: field_exit_price
+entity_type: node
+bundle: crypto
+label: 'Exit Price'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

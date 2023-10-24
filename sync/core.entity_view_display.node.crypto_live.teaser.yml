@@ -1,0 +1,32 @@
+uuid: f0db1395-4cf0-45fc-a3bf-965c81dcdf8e
+langcode: en
+status: true
+dependencies:
+  config:
+    - core.entity_view_mode.node.teaser
+    - field.field.node.crypto_live.field_change
+    - field.field.node.crypto_live.field_entry_price
+    - field.field.node.crypto_live.field_exit_price
+    - field.field.node.crypto_live.field_quantity
+    - field.field.node.crypto_live.field_symbol
+    - field.field.node.crypto_live.field_trend
+    - node.type.crypto_live
+  module:
+    - user
+id: node.crypto_live.teaser
+targetEntityType: node
+bundle: crypto_live
+mode: teaser
+content:
+  links:
+    settings: {  }
+    third_party_settings: {  }
+    weight: 100
+    region: content
+hidden:
+  field_change: true
+  field_entry_price: true
+  field_exit_price: true
+  field_quantity: true
+  field_symbol: true
+  field_trend: true

@@ -1,0 +1,22 @@
+uuid: 61395696-d435-4bdc-a9f0-5e185e1c606e
+langcode: en
+status: true
+dependencies:
+  module:
+    - node
+_core:
+  default_config_hash: RztUzSSuT6sE_RKVcc4Ps7GQ9aovEv3oT3_F6QLxYYE
+id: node.field_google_analytics_counter
+field_name: field_google_analytics_counter
+entity_type: node
+type: integer
+settings:
+  unsigned: false
+  size: normal
+module: core
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

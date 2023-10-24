@@ -1,0 +1,64 @@
+uuid: 8fbd120f-41e2-48a0-a8eb-b0e29c5eed4e
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.node.crypto.field_change
+    - field.field.node.crypto.field_entry_price
+    - field.field.node.crypto.field_exit_price
+    - field.field.node.crypto.field_symbol
+    - field.field.node.crypto.field_trend
+    - node.type.crypto
+  module:
+    - user
+id: node.crypto.default
+targetEntityType: node
+bundle: crypto
+mode: default
+content:
+  field_change:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 106
+    region: content
+  field_entry_price:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 104
+    region: content
+  field_exit_price:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 105
+    region: content
+  field_symbol:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 102
+    region: content
+  field_trend:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 103
+    region: content
+  links:
+    settings: {  }
+    third_party_settings: {  }
+    weight: 100
+    region: content
+hidden: {  }

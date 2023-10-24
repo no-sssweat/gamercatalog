@@ -1,0 +1,30 @@
+_core:
+  default_config_hash: OJp9f1IMc5N7ngNsJdtX38fwYinrurpINx58xvmr72o
+general_settings:
+  client_id: ''
+  client_secret: ''
+  redirect_uri: ''
+  cron_interval: 1
+  chunk_to_fetch: 1000
+  cache_length: 0
+  queue_time: 120
+  end_date: '30 days ago +30 days -1 day'
+  start_date: '30 days ago'
+  custom_start_date: ''
+  custom_end_date: ''
+  custom_start_day: ''
+  custom_end_day: ''
+  project_name: ''
+  profile_id: ''
+  gac_type_page: null
+  ga4_property_id: ''
+  credentials_json_path: ''
+  node_last_x_days: null
+  node_not_newer_than_x_days: null
+  node_last_x_nid: null
+  metric: screenPageViews
+  dimension: pagePath
+  result_processor: url_alias
+  gac_type_article: null
+  gac_type_crypto: null
+  gac_type_crypto_live: null

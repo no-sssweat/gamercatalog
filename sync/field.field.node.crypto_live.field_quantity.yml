@@ -1,0 +1,19 @@
+uuid: 8ab58fbf-5f08-4fe6-b0be-9aae8872edc4
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_quantity
+    - node.type.crypto_live
+id: node.crypto_live.field_quantity
+field_name: field_quantity
+entity_type: node
+bundle: crypto_live
+label: quantity
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

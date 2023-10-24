@@ -1,0 +1,19 @@
+uuid: 9404392c-7dac-4004-8f86-0349bca1fe30
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_change
+    - node.type.crypto
+id: node.crypto.field_change
+field_name: field_change
+entity_type: node
+bundle: crypto
+label: Change
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

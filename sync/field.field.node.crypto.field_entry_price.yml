@@ -1,0 +1,19 @@
+uuid: f8983524-2881-4b25-85db-b6da034292ed
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_entry_price
+    - node.type.crypto
+id: node.crypto.field_entry_price
+field_name: field_entry_price
+entity_type: node
+bundle: crypto
+label: 'Entry Price'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

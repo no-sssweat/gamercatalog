@@ -1,0 +1,19 @@
+uuid: 3bdcd771-7933-4d2d-9781-b95d53536cf2
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_trend
+    - node.type.crypto
+id: node.crypto.field_trend
+field_name: field_trend
+entity_type: node
+bundle: crypto
+label: Trend
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string
