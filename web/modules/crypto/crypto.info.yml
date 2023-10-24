@@ -1,0 +1,5 @@
+name: 'Crypto'
+type: module
+description: 'Connects with Binance'
+package: 'Custom'
+core_version_requirement: ^8.8.2 || ^9

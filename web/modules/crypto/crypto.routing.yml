@@ -1,0 +1,12 @@
+crypto.webhook:
+  path: 'the-moon/{symbol}/{dollar_amount}/{buy_or_sell}'
+  defaults:
+    _controller: '\Drupal\crypto\Controller\CryptoController::binanceConnect'
+  requirements:
+    _access: 'TRUE'
+crypto.webhook2:
+  path: 'test/{symbol}/{test_id}/{buy_or_sell}'
+  defaults:
+    _controller: '\Drupal\crypto\Controller\CryptoTestController::binanceConnect'
+  requirements:
+    _access: 'TRUE'
