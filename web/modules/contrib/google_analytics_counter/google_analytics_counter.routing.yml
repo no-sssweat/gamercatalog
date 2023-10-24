@@ -1,0 +1,47 @@
+google_analytics_counter.admin_settings_form:
+  path: '/admin/config/system/google-analytics-counter'
+  defaults:
+    _form: '\Drupal\google_analytics_counter\Form\GoogleAnalyticsCounterSettingsForm'
+    _title: 'Google Analytics Counter: Settings'
+  requirements:
+    _permission: 'administer google analytics counter'
+
+google_analytics_counter.configure_types_form:
+  path: '/admin/config/system/google-analytics-counter-configure-types'
+  defaults:
+    _form: '\Drupal\google_analytics_counter\Form\GoogleAnalyticsCounterConfigureTypesForm'
+    _title: 'Google Analytics Counter: Custom field'
+  requirements:
+    _permission: 'administer google analytics counter'
+
+google_analytics_counter.admin_dashboard_form:
+  path: '/admin/config/system/google-analytics-counter/dashboard'
+  defaults:
+    _controller: '\Drupal\google_analytics_counter\Controller\GoogleAnalyticsCounterController::dashboard'
+    _title: 'Google Analytics Counter: Dashboard'
+  requirements:
+    _permission: 'administer google analytics counter'
+
+google_analytics_counter.admin_auth_form:
+  path: '/admin/config/system/google-analytics-counter/authentication'
+  defaults:
+    _form: '\Drupal\google_analytics_counter\Form\GoogleAnalyticsCounterAuthForm'
+    _title: 'Google Analytics Counter: Authentication'
+  requirements:
+    _permission: 'administer google analytics counter'
+
+google_analytics_counter.confirm_clear_page_path_delete:
+  path: '/admin/config/system/google-analytics-counter/clear-page-path-table'
+  defaults:
+    _title: 'Confirm clearing existing data'
+    _form: 'Drupal\google_analytics_counter\Form\ConfirmClearPagePathTableForm'
+  requirements:
+    _permission: 'administer google analytics counter'
+
+google_analytics_counter.confirm_clear_queue:
+  path: '/admin/config/system/google-analytics-counter/clear-queue'
+  defaults:
+    _title: 'Confirm queue clear'
+    _form: 'Drupal\google_analytics_counter\Form\ConfirmClearQueueForm'
+  requirements:
+    _permission: 'administer google analytics counter'

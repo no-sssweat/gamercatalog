@@ -12,7 +12,7 @@
 # Ignore sensitive information
 /web/sites/*/services.yml
 /web/sites/*/settings.local.php
-default.settings.php
+#default.settings.php
 settings.local.php
 services.yml
 web/sites/default/settings.php

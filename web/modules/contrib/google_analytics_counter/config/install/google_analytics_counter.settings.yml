@@ -1,0 +1,21 @@
+general_settings:
+  client_id: ''
+  client_secret: ''
+  redirect_uri: ''
+  cron_interval: 30
+  chunk_to_fetch: 1000
+  cache_length: 86400
+  queue_time: 120
+  end_date: '30 days ago +30 days -1 day'
+  start_date: '30 days ago'
+  custom_start_date: ''
+  custom_end_date: ''
+  project_name: ''
+  profile_id: ''
+  ga4_property_id: ''
+  credentials_json_path: ''
+  custom_start_day: ''
+  custom_end_day: ''
+  metric: 'screenPageViews'
+  dimension: 'pagePath'
+  result_processor: 'url_alias'

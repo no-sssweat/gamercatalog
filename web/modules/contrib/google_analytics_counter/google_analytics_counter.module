@@ -1,0 +1,78 @@
+<?php
+
+/**
+ * @file
+ * Basic functions for this module.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_cron().
+ */
+function google_analytics_counter_cron() {
+  /** @var \Drupal\google_analytics_counter\GoogleAnalyticsCounterCronInterface $cronService */
+  $cronService = \Drupal::service('google_analytics_counter.cron');
+  $cronService->googleAnalyticsCounterCron();
+}
+
+/**
+ * Implements hook_help().
+ */
+function google_analytics_counter_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.google_analytics_counter':
+      $output = file_get_contents(\Drupal::service('extension.list.module')->getPath('google_analytics_counter') . '/README.md');
+      return nl2br($output);
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function google_analytics_counter_theme() {
+  return [
+    'google_analytics_counter' => [
+      'variables' => ['pageviews' => NULL],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_queue_info_alter().
+ */
+function google_analytics_counter_queue_info_alter(&$queues) {
+  $config = \Drupal::config('google_analytics_counter.settings');
+  $queues['google_analytics_counter_worker']['cron']['time'] = $config->get('general_settings.queue_time');
+}
+
+/**
+ * Implements hook_page_attachments().
+ */
+function google_analytics_counter_page_attachments(&$page) {
+  $theme = \Drupal::theme()->getActiveTheme()->getName();
+  if (in_array($theme, ['bartik', 'seven'])) {
+    $page['#attached']['library'][] = 'google_analytics_counter/google_analytics_counter';
+  }
+}
+
+/**
+ * Form alter hooks.
+ */
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter() for node_form().
+ */
+function google_analytics_counter_form_node_form_alter(&$form, FormStateInterface $form_state) {
+  // Make the google analytics counter field readonly.
+  isset($form['field_google_analytics_counter']) ? $form['field_google_analytics_counter']['widget'][0]['value']['#attributes']['readonly'] = 'readonly' : NULL;
+
+  // Display Google Analytics Counter field only to roles with the permission.
+  $fields_requiring_permission = [
+    'field_google_analytics_counter',
+  ];
+  foreach ($fields_requiring_permission as $field_requiring_permission) {
+    $form[$field_requiring_permission]['#access'] = \Drupal::currentUser()->hasPermission('access content');
+  }
+}

@@ -1,0 +1,29 @@
+services:
+
+  # Services.
+
+  google_analytics_counter.app_manager:
+    class: \Drupal\google_analytics_counter\GoogleAnalyticsCounterAppManager
+    arguments: ['@config.factory', '@database', '@state', '@path_alias.manager', '@path.matcher', '@language_manager', '@logger.channel.google_analytics_counter', '@messenger', '@path.current', '@current_route_match', '@plugin.manager.google_analytics_counter_result_processor', '@cache.default', '@cache.entity', '@event_dispatcher']
+
+  google_analytics_counter.custom_field_generator:
+    class: Drupal\google_analytics_counter\GoogleAnalyticsCounterCustomFieldGenerator
+    arguments: ['@config.factory', '@database', '@logger.channel.google_analytics_counter', '@messenger', '@entity_type.manager', '@entity_display.repository']
+
+  google_analytics_counter.message_manager:
+    class: Drupal\google_analytics_counter\GoogleAnalyticsCounterMessageManager
+    arguments: ['@config.factory', '@database', '@state', '@date.formatter', '@logger.channel.google_analytics_counter', '@messenger']
+
+  google_analytics_counter.cron:
+    class: Drupal\google_analytics_counter\GoogleAnalyticsCounterCron
+    arguments: ['@database', '@datetime.time', '@state', '@logger.factory', '@google_analytics_counter.app_manager', '@config.factory', '@queue']
+
+  # Logger.
+
+  logger.channel.google_analytics_counter:
+    parent: logger.channel_base
+    arguments: ['google_analytics_counter']
+
+  plugin.manager.google_analytics_counter_result_processor:
+    class: Drupal\google_analytics_counter\GoogleAnalyticsCounterResultProcessorPluginManager
+    parent: default_plugin_manager

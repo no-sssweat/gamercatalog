@@ -127,11 +127,7 @@ class EntityOperations extends FieldPluginBase {
    * {@inheritdoc}
    */
   public function render(ResultRow $values) {
-    $entity = $this->getEntity($values);
-    if (!$entity) {
-      return '';
-    }
-    $entity = $this->getEntityTranslation($entity, $values);
+    $entity = $this->getEntityTranslation($this->getEntity($values), $values);
     $operations = $this->entityTypeManager->getListBuilder($entity->getEntityTypeId())->getOperations($entity);
     if ($this->options['destination']) {
       foreach ($operations as &$operation) {

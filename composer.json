@@ -19,6 +19,7 @@
         "drupal/core-composer-scaffold": "^9.3",
         "drupal/core-project-message": "^9.3",
         "drupal/core-recommended": "^9.3",
+        "drupal/google_analytics_counter": "^4.0",
         "drupal/samlauth": "^3.8"
     },
     "conflict": {
