@@ -5,7 +5,7 @@
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => '1f6d9c1408bef9f37031c48921280339cd9fb85d',
+        'reference' => '1b187c8be067e3a46fa6ca99f987d16875bfdd75',
         'name' => 'drupal/recommended-project',
         'dev' => true,
     ),
@@ -568,6 +568,15 @@
                 0 => '9.3.2',
             ),
         ),
+        'drupal/google_analytics' => array(
+            'pretty_version' => '4.0.2',
+            'version' => '4.0.2.0',
+            'type' => 'drupal-module',
+            'install_path' => __DIR__ . '/../../web/modules/contrib/google_analytics',
+            'aliases' => array(),
+            'reference' => '4.0.2',
+            'dev_requirement' => false,
+        ),
         'drupal/google_analytics_counter' => array(
             'pretty_version' => '4.0.3',
             'version' => '4.0.3.0',
@@ -739,6 +748,15 @@
                 0 => '9.3.2',
             ),
         ),
+        'drupal/queue_ui' => array(
+            'pretty_version' => '3.1.3',
+            'version' => '3.1.3.0',
+            'type' => 'drupal-module',
+            'install_path' => __DIR__ . '/../../web/modules/contrib/queue_ui',
+            'aliases' => array(),
+            'reference' => '3.1.3',
+            'dev_requirement' => false,
+        ),
         'drupal/quickedit' => array(
             'dev_requirement' => false,
             'replaced' => array(
@@ -757,7 +775,7 @@
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => '1f6d9c1408bef9f37031c48921280339cd9fb85d',
+            'reference' => '1b187c8be067e3a46fa6ca99f987d16875bfdd75',
             'dev_requirement' => false,
         ),
         'drupal/responsive_image' => array(
@@ -900,6 +918,15 @@
             'replaced' => array(
                 0 => '9.3.2',
             ),
+        ),
+        'drupal/webform' => array(
+            'pretty_version' => '6.1.7',
+            'version' => '6.1.7.0',
+            'type' => 'drupal-module',
+            'install_path' => __DIR__ . '/../../web/modules/contrib/webform',
+            'aliases' => array(),
+            'reference' => '6.1.7',
+            'dev_requirement' => false,
         ),
         'drupal/workflows' => array(
             'dev_requirement' => false,
@@ -1201,8 +1228,8 @@
         'psr/container-implementation' => array(
             'dev_requirement' => false,
             'provided' => array(
-                0 => '1.0',
-                1 => '^1.0',
+                0 => '^1.0',
+                1 => '1.0',
             ),
         ),
         'psr/event-dispatcher-implementation' => array(
