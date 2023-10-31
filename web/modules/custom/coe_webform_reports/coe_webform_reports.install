@@ -1,0 +1,67 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the coe_webform_reports module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+//function coe_webform_reports_install() {
+//  \Drupal::messenger()->addStatus(__FUNCTION__);
+//}
+
+/**
+ * Implements hook_uninstall().
+ */
+//function coe_webform_reports_uninstall() {
+//  \Drupal::messenger()->addStatus(__FUNCTION__);
+//}
+
+/**
+ * Implements hook_schema().
+ */
+function coe_webform_reports_schema() {
+  $schema['coe_webform_reports_view_count'] = [
+    'description' => 'Stores Webform view count.',
+    'fields' => [
+      'id' => [
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique record Webform ID',
+      ],
+      'view_count' => [
+        'type' => 'int',
+        'length' => 11,
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'View count integer field',
+      ],
+      // Need to add a type column so it works with the Entity Label views field.
+      'type' => [
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'description' => 'Entity type',
+      ],
+      'title' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'description' => 'The title of the Webform',
+      ],
+    ],
+    'primary key' => ['id'],
+    'indexes' => [
+      'id' => ['id'],
+      'view_count' => ['view_count'],
+      'type' => ['type'],
+      'title' => ['title'],
+    ],
+  ];
+
+  return $schema;
+}

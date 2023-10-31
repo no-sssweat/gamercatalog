@@ -1,0 +1,4 @@
+services:
+  coe_webform_reports.view_count:
+    class: 'Drupal\coe_webform_reports\WebformReportsViewCountService'
+    arguments: ['@database']

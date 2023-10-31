@@ -1,0 +1,7 @@
+{
+  "name": "drupal/coe_webform_reports",
+  "type": "drupal-custom-module",
+  "require": {
+    "google/apiclient": "^2.0"
+  }
+}

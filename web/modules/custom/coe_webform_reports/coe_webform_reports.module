@@ -1,0 +1,60 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for coe_webform_reports module.
+ *
+ */
+
+use Drupal\Core\Serialization\Yaml;
+use Drupal\webform\WebformSubmissionInterface;
+
+
+/**
+ * Implements hook_form_alter().
+ */
+function coe_webform_reports_form_alter(&$form, &$form_state, $form_id) {
+  // adds custom fields to webform configuration
+  if ($form_id == '"webform_edit_form') {
+    $webform = $form_state->getFormObject()->getEntity();
+    $elements = Yaml::decode($webform->get('elements'));
+
+    // add a field
+    $elements['completion_time'] = [
+      '#type' => 'textfield',
+      '#title' => 'Completion Time',
+      '#readonly' => true,
+      '#input_hide' => true,
+    ];
+
+    $webform->set('elements', Yaml::encode($elements));
+    $webform->save();
+  }
+  // adds dummy time field to keep track of how long user took to submit form.
+  $current_route = \Drupal::routeMatch()->getRouteName();
+  if (!empty($form['#webform_id']) && $current_route === 'entity.webform.canonical') {
+    $form['coe_webform_reports_start_time'] = [
+      '#type' => 'textfield',
+      '#title' => t('Start Time'),
+      '#default_value' => time(),
+      '#attributes' => [
+        'readonly' => 'readonly',
+      ],
+    ];
+  }
+
+}
+
+/**
+ * Implements hook_webform_submission_presave().
+ */
+function coe_webform_reports_webform_submission_presave(WebformSubmissionInterface $webform_submission) {
+    // Calculate and the save the completion time value
+    $start_time = $webform_submission->getElementData('coe_webform_reports_start_time');
+    $completion_time = '';
+    $webform_submission->setElementData('completion_time', $completion_time);
+}
+
+//    $viewCountService = \Drupal::service('coe_webform_reports.view_count');
+//    $viewCountService->setViewCount('testing_lol', 42);
+//    $count = $viewCountService->getViewCount('testing_lol');
