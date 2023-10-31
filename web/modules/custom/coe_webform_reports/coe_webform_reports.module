@@ -7,6 +7,7 @@
  */
 
 use Drupal\Core\Serialization\Yaml;
+use Drupal\webform\WebformInterface;
 use Drupal\webform\WebformSubmissionInterface;
 
 
@@ -58,3 +59,12 @@ function coe_webform_reports_webform_submission_presave(WebformSubmissionInterfa
 //    $viewCountService = \Drupal::service('coe_webform_reports.view_count');
 //    $viewCountService->setViewCount('testing_lol', 42);
 //    $count = $viewCountService->getViewCount('testing_lol');
+
+/**
+ * Implements hook_webform_insert().
+ */
+function coe_webform_reports_webform_insert(WebformInterface $webform) {
+  // Get the ID of the newly created webform.
+  ksm($webform);
+  ksm($webform->id());
+}

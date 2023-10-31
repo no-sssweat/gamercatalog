@@ -22,7 +22,8 @@
         "drupal/google_analytics": "^4.0",
         "drupal/queue_ui": "^3.1",
         "drupal/samlauth": "^3.8",
-        "drupal/webform": " ^6.1@beta"
+        "drupal/webform": " ^6.1@beta",
+        "kint-php/kint": "~3.0"
     },
     "conflict": {
         "drupal/drupal": "*"

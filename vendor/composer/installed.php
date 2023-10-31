@@ -5,7 +5,7 @@
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => '6dc45ec5ea3d817dcf1361502a0663ca4db5b05d',
+        'reference' => 'feb40892a94e9179306658466386e42a08775025',
         'name' => 'drupal/recommended-project',
         'dev' => true,
     ),
@@ -766,7 +766,7 @@
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => '6dc45ec5ea3d817dcf1361502a0663ca4db5b05d',
+            'reference' => 'feb40892a94e9179306658466386e42a08775025',
             'dev_requirement' => false,
         ),
         'drupal/responsive_image' => array(
@@ -1001,6 +1001,15 @@
             'install_path' => __DIR__ . '/../guzzlehttp/psr7',
             'aliases' => array(),
             'reference' => '1afdd860a2566ed3c2b0b4a3de6e23434a79ec85',
+            'dev_requirement' => false,
+        ),
+        'kint-php/kint' => array(
+            'pretty_version' => '3.3',
+            'version' => '3.3.0.0',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../kint-php/kint',
+            'aliases' => array(),
+            'reference' => '335ac1bcaf04d87df70d8aa51e8887ba2c6d203b',
             'dev_requirement' => false,
         ),
         'laminas/laminas-diactoros' => array(
