@@ -9,12 +9,20 @@
 use Drupal\Core\Serialization\Yaml;
 use Drupal\webform\WebformInterface;
 use Drupal\webform\WebformSubmissionInterface;
-
+use Google\Client;
+use Google\Analytics\Data\V1beta\DateRange;
+use Google\Analytics\Data\V1beta\Dimension;
+use Google\Analytics\Data\V1beta\Metric;
+use Google\Auth\CredentialsLoader;
+use Google\Analytics\Data\V1beta\BetaAnalyticsDataClient;
 
 /**
  * Implements hook_form_alter().
  */
 function coe_webform_reports_form_alter(&$form, &$form_state, $form_id) {
+
+//  _api_test();
+
   // adds custom fields to webform configuration
   if ($form_id == '"webform_edit_form') {
     $webform = $form_state->getFormObject()->getEntity();
@@ -56,15 +64,154 @@ function coe_webform_reports_webform_submission_presave(WebformSubmissionInterfa
     $webform_submission->setElementData('completion_time', $completion_time);
 }
 
-//    $viewCountService = \Drupal::service('coe_webform_reports.view_count');
-//    $viewCountService->setViewCount('testing_lol', 42);
-//    $count = $viewCountService->getViewCount('testing_lol');
-
 /**
  * Implements hook_webform_insert().
  */
 function coe_webform_reports_webform_insert(WebformInterface $webform) {
-  // Get the ID of the newly created webform.
-  ksm($webform);
-  ksm($webform->id());
+  $view_count_service = \Drupal::service('coe_webform_reports.view_count');
+  $view_count_service->onWebformCreate($webform);
+}
+
+/**
+ * Implements hook_webform_delete().
+ */
+function coe_webform_reports_webform_delete(WebformInterface $webform) {
+  $view_count_service = \Drupal::service('coe_webform_reports.view_count');
+  $view_count_service->onWebformDelete($webform);
+}
+
+function _api_test() {
+  $client = new Client();
+  $client->setAuthConfig('modules/custom/coe_webform_reports/client_secret_174960103407-2mudtsjrljrevic47j12b3rl52g1dhck.apps.googleusercontent.com.json');
+  $client->addScope('https://www.googleapis.com/auth/analytics.readonly');
+
+  // Set up the API client and authenticate.
+  // Create an authorized analytics service object.
+  $analytics = new Google_Service_AnalyticsData($client);
+//  ksm($analytics);
+  // Call the Analytics Reporting API V4.
+  $response = _getReport($analytics);
+
+//  $propertyId = 'your-property-id'; // Replace with your GA4 property ID.
+//  $dateRange = new Google_Service_AnalyticsData_DateRange();
+//  $dateRange->setStartDate('YYYY-MM-DD'); // Specify the date range.
+//  $dateRange->setEndDate('YYYY-MM-DD');
+//
+//  $request = new Google_Service_AnalyticsData_RunReportRequest();
+//  $request->setDateRanges($dateRange);
+//  $request->setMetrics([['name' => 'metrics/goalCompletionsAll']]); // Replace with the actual metric you want.
+//
+//  $response = $analytics->properties->runReport($propertyId, $request);
+//
+//  // Process the $response JSON to extract the data you need.
+}
+
+
+///**
+// * Queries the Analytics Reporting API V4.
+// *
+// * @param service An authorized Analytics Reporting API V4 service object.
+// * @return The Analytics Reporting API V4 response.
+// */
+function _getReport($analytics) {
+
+  putenv('GOOGLE_APPLICATION_CREDENTIALS=modules/custom/coe_webform_reports/Quickstart-b464f8449936.json');
+
+  // Replace with your view ID, for example XXXX.
+  $propertyId = "413264721";
+
+  $client = new BetaAnalyticsDataClient();
+
+  $dateRange = new DateRange();
+  $dateRange->setStartDate('7daysAgo');
+  $dateRange->setEndDate('today');
+
+  $dimensions = [new Dimension(['name' => 'pagePath'])];
+  $metrics = [new Metric(['name' => 'itemsViewed'])];
+
+  $response = $client->runReport([
+    'property' => 'properties/' . $propertyId,
+    'dateRanges' => [$dateRange], // Include the date range here
+    'dimensions' => $dimensions, // Include dimensions here
+    'metrics' => $metrics, // Include metrics here
+    // ... other parameters ...
+  ]);
+
+//  ksm($response);
+
+//  foreach ($response->getRows() as $row) {
+//    foreach ($row->getDimensionValues() as $dimensionValue) {
+//      ksm($dimensionValue);
+////      print 'Dimension Value: ' . $dimensionValue->getValue() . PHP_EOL;
+//    }
+//  }
+
+
+//  // Create the DateRange object.
+//  $dateRange = new Google_Service_AnalyticsReporting_DateRange();
+//  $dateRange->setStartDate("7daysAgo");
+//  $dateRange->setEndDate("today");
+//
+//  // Create the Metrics object.
+//  $sessions = new Google_Service_AnalyticsReporting_Metric();
+//  $sessions->setExpression("ga:sessions");
+//  $sessions->setAlias("sessions");
+//
+//  // Create the ReportRequest object.
+//  $request = new Google_Service_AnalyticsReporting_ReportRequest();
+//  $request->setViewId($propertyId);
+//  $request->setDateRanges($dateRange);
+//  $request->setMetrics(array($sessions));
+//
+//  $body = new Google_Service_AnalyticsReporting_GetReportsRequest();
+//  $body->setReportRequests(array( $request));
+////  ksm($analytics->reports->batchGet($body));
+///
+///
+
+
+
+
+//// Replace with the path to your service account JSON key file
+//  $keyFilePath = '/path/to/your-service-account-key.json';
+//
+//// Replace with your GA4 Property ID
+//  $propertyId = 'your-property-id';
+//
+//// Create a client with your service account credentials
+//  $credentials = CredentialsLoader::fromKeyValueFile($keyFilePath);
+//  $client = new AlphaAnalyticsDataClient(['credentials' => $credentials]);
+//
+//// Define the date range for your query
+//  $dateRange = new DateRange();
+//  $dateRange->setStartDate('7daysAgo');
+//  $dateRange->setEndDate('today');
+//
+//// Define the dimensions and metrics for your query
+//  $dimensions = [new Dimension(['name' => 'pagePath'])];
+//  $metrics = [new Metric(['name' => 'pageViews'])];
+//
+//// Define filter expressions (if needed)
+//  $filterExpression = new FilterExpression();
+//  $filterExpression->setField('pagePath');
+//  $filterExpression->setOperator(FilterOperator::REGEXP);
+//  $filterExpression->setValue('/example-page/'); // Replace with your desired page path
+//  $filterExpressionList = new FilterExpressionList();
+//  $filterExpressionList->setExpressions([$filterExpression]);
+//
+//// Define order by expression (if needed)
+//  $orderBy = new OrderByExpression();
+//  $orderBy->setFieldName('pageViews');
+//  $orderBy->setOrderType(OrderBy\OrderBy\SortOrder::DESCENDING);
+//
+//// Make the query request
+//  $response = $client->runReport([
+//    'property' => "properties/$propertyId",
+//    'dateRanges' => [$dateRange],
+//    'dimensions' => $dimensions,
+//    'metrics' => $metrics,
+//    'filter' => $filterExpressionList,
+//    'orderBys' => [$orderBy],
+//  ]);
+
 }

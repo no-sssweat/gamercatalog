@@ -1,0 +1,5 @@
+custom-ga4-event:
+  js:
+    js/custom-ga4-event.js: {}
+  dependencies:
+    - core/jquery

@@ -3,6 +3,8 @@
 namespace Drupal\coe_webform_reports;
 
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Database\DatabaseExceptionWrapper;
+use Drupal\webform\WebformInterface;
 
 class WebformReportsViewCountService {
 
@@ -33,4 +35,38 @@ class WebformReportsViewCountService {
       ->fields(['view_count' => $viewCount])
       ->execute();
   }
+
+  public function onWebformCreate(WebformInterface $webform) {
+    try {
+      $data = [
+        'id' => $webform->id(),
+        'view_count' => 0,
+        'type' => 'webform',
+        'title' => $webform->label(),
+      ];
+
+      $this->database->insert('coe_webform_reports_view_count')
+        ->fields($data)
+        ->execute();
+    }
+    catch (DatabaseExceptionWrapper $e) {
+      \Drupal::logger('coe_webform_reports')
+        ->error('Database insert error: @message',
+          ['@message' => $e->getMessage()]);
+    }
+  }
+
+  public function onWebformDelete(WebformInterface $webform) {
+    try {
+      $this->database->delete('coe_webform_reports_view_count')
+        ->condition('id', $webform->id())
+        ->execute();
+    }
+    catch (DatabaseExceptionWrapper $e) {
+      \Drupal::logger('coe_webform_reports')
+        ->error('Database delete error: @message',
+          ['@message' => $e->getMessage()]);
+    }
+  }
+
 }

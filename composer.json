@@ -16,13 +16,17 @@
     ],
     "require": {
         "composer/installers": "^1.9",
+        "cweagans/composer-patches": "^1.6",
         "drupal/core-composer-scaffold": "^9.3",
         "drupal/core-project-message": "^9.3",
         "drupal/core-recommended": "^9.3",
+        "drupal/devel": "^4.2",
         "drupal/google_analytics": "^4.0",
         "drupal/queue_ui": "^3.1",
         "drupal/samlauth": "^3.8",
         "drupal/webform": " ^6.1@beta",
+        "google/analytics-data": "*",
+        "google/apiclient": "^2.0",
         "kint-php/kint": "~3.0"
     },
     "conflict": {
@@ -35,7 +39,8 @@
         "allow-plugins": {
             "composer/installers": true,
             "drupal/core-composer-scaffold": true,
-            "drupal/core-project-message": true
+            "drupal/core-project-message": true,
+            "cweagans/composer-patches": true
         }
     },
     "extra": {
@@ -72,6 +77,11 @@
             "web/themes/custom/{$name}": [
                 "type:drupal-custom-theme"
             ]
+        },
+        "patches": {
+            "drupal/devel": {
+                "Brings back tabs": "https://www.drupal.org/files/issues/2021-12-22/drupal-kint.patch"
+            }
         },
         "drupal-core-project-message": {
             "include-keys": [
