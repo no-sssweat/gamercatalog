@@ -111,56 +111,56 @@ function _api_test() {
 // */
 function _getReport($analytics) {
 
-  $google_api_service_client = \Drupal::entityTypeManager()->getStorage('google_api_service_client')->load('ga4');
-  $googleService = \Drupal::service('google_api_service_client.client');
-  // Set the account.
-  $googleService->setGoogleApiClient($google_api_service_client);
-  $creds = $googleService->googleApiServiceClient->getAuthConfig();
-
-  // Replace with your view ID, for example XXXX.
-  $propertyId = "413264721";
-
-  $client = new BetaAnalyticsDataClient(['credentials' => $creds]);
-
-  // Create the GA4 property ID.
-  $property = "properties/$propertyId";
-
-  $dateRange = new DateRange();
-  $dateRange->setStartDate('2023-10-01');
-  $dateRange->setEndDate('today');
-
-  $dimensions = [new Dimension(['name' => 'contentId'])];
-  $metrics = [new Metric(['name' => 'screenPageViews'])];
-
-  // Set the specific contentId you want to filter by.
-  $specificContentId = 'webform-submission-contact-add-form';
-
-  // Will return the sum of those two
-  $dimensionFilter = new FilterExpression([
-    'filter' => new Filter([
-      'field_name' => 'pagePath',
-      'in_list_filter' => new inListFilter([
-        'values' => ['/form/test', '/form/contact']
-      ])
-    ])
-  ]);
-  ;
-
-  $response = $client->runReport([
-    'property' => 'properties/' . $propertyId,
-    'dateRanges' => [$dateRange],
-//    'dimensions' => $dimensions,
-    'metrics' => $metrics,
-    'dimensionFilter' => $dimensionFilter,
-  ]);
-
-  if ($response) {
-    foreach ($response->getRows() as $row) {
-      $count = $row->getMetricValues()[0]->getValue();
-    }
-    $client->close();
-    return $count;
-  }
+//  $google_api_service_client = \Drupal::entityTypeManager()->getStorage('google_api_service_client')->load('ga4');
+//  $googleService = \Drupal::service('google_api_service_client.client');
+//  // Set the account.
+//  $googleService->setGoogleApiClient($google_api_service_client);
+//  $creds = $googleService->googleApiServiceClient->getAuthConfig();
+//
+//  // Replace with your view ID, for example XXXX.
+//  $propertyId = "413264721";
+//
+//  $client = new BetaAnalyticsDataClient(['credentials' => $creds]);
+//
+//  // Create the GA4 property ID.
+//  $property = "properties/$propertyId";
+//
+//  $dateRange = new DateRange();
+//  $dateRange->setStartDate('2023-10-01');
+//  $dateRange->setEndDate('today');
+//
+//  $dimensions = [new Dimension(['name' => 'contentId'])];
+//  $metrics = [new Metric(['name' => 'screenPageViews'])];
+//
+//  // Set the specific contentId you want to filter by.
+//  $specificContentId = 'webform-submission-contact-add-form';
+//
+//  // Will return the sum of those two
+//  $dimensionFilter = new FilterExpression([
+//    'filter' => new Filter([
+//      'field_name' => 'pagePath',
+//      'in_list_filter' => new inListFilter([
+//        'values' => ['/form/test', '/form/contact']
+//      ])
+//    ])
+//  ]);
+//  ;
+//
+//  $response = $client->runReport([
+//    'property' => 'properties/' . $propertyId,
+//    'dateRanges' => [$dateRange],
+////    'dimensions' => $dimensions,
+//    'metrics' => $metrics,
+//    'dimensionFilter' => $dimensionFilter,
+//  ]);
+//
+//  if ($response) {
+//    foreach ($response->getRows() as $row) {
+//      $count = $row->getMetricValues()[0]->getValue();
+//    }
+//    $client->close();
+//    return $count;
+//  }
 
 }
 
