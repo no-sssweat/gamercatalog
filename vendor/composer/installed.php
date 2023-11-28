@@ -5,7 +5,7 @@
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => '9186c5a7ab0229672e3d4620b012eb6ac5c8c945',
+        'reference' => '9bb91c32fce2efae4ad97f9e73e98929c566e364',
         'name' => 'drupal/recommended-project',
         'dev' => true,
     ),
@@ -532,7 +532,7 @@
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => '9186c5a7ab0229672e3d4620b012eb6ac5c8c945',
+            'reference' => '9bb91c32fce2efae4ad97f9e73e98929c566e364',
             'dev_requirement' => false,
         ),
         'drupal/samlauth' => array(
@@ -560,6 +560,15 @@
             'install_path' => __DIR__ . '/../../web/modules/contrib/views_aggregator',
             'aliases' => array(),
             'reference' => '2.0.2',
+            'dev_requirement' => false,
+        ),
+        'drupal/views_bulk_operations' => array(
+            'pretty_version' => '4.2.5',
+            'version' => '4.2.5.0',
+            'type' => 'drupal-module',
+            'install_path' => __DIR__ . '/../../web/modules/contrib/views_bulk_operations',
+            'aliases' => array(),
+            'reference' => '4.2.5',
             'dev_requirement' => false,
         ),
         'drupal/webform' => array(
