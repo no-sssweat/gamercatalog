@@ -5,7 +5,7 @@
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => 'a0fa4ce87a1d07c5ca7cb2a1889076bea343fc06',
+        'reference' => '493b8a1fe5e43242c0bdbc3d3050b5e9eed334e5',
         'name' => 'drupal/recommended-project',
         'dev' => true,
     ),
@@ -257,6 +257,15 @@
             'install_path' => __DIR__ . '/../../web/modules/contrib/admin_toolbar',
             'aliases' => array(),
             'reference' => '3.4.2',
+            'dev_requirement' => false,
+        ),
+        'drupal/backup_migrate' => array(
+            'pretty_version' => '5.0.3',
+            'version' => '5.0.3.0',
+            'type' => 'drupal-module',
+            'install_path' => __DIR__ . '/../../web/modules/contrib/backup_migrate',
+            'aliases' => array(),
+            'reference' => '5.0.3',
             'dev_requirement' => false,
         ),
         'drupal/captcha' => array(
@@ -523,7 +532,7 @@
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => 'a0fa4ce87a1d07c5ca7cb2a1889076bea343fc06',
+            'reference' => '493b8a1fe5e43242c0bdbc3d3050b5e9eed334e5',
             'dev_requirement' => false,
         ),
         'drupal/samlauth' => array(
