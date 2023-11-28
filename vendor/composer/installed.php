@@ -5,7 +5,7 @@
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => '493b8a1fe5e43242c0bdbc3d3050b5e9eed334e5',
+        'reference' => '9186c5a7ab0229672e3d4620b012eb6ac5c8c945',
         'name' => 'drupal/recommended-project',
         'dev' => true,
     ),
@@ -532,7 +532,7 @@
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => '493b8a1fe5e43242c0bdbc3d3050b5e9eed334e5',
+            'reference' => '9186c5a7ab0229672e3d4620b012eb6ac5c8c945',
             'dev_requirement' => false,
         ),
         'drupal/samlauth' => array(
@@ -551,6 +551,15 @@
             'install_path' => __DIR__ . '/../../web/modules/contrib/token',
             'aliases' => array(),
             'reference' => '8.x-1.13',
+            'dev_requirement' => false,
+        ),
+        'drupal/views_aggregator' => array(
+            'pretty_version' => '2.0.2',
+            'version' => '2.0.2.0',
+            'type' => 'drupal-module',
+            'install_path' => __DIR__ . '/../../web/modules/contrib/views_aggregator',
+            'aliases' => array(),
+            'reference' => '2.0.2',
             'dev_requirement' => false,
         ),
         'drupal/webform' => array(
