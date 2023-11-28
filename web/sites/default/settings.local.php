@@ -153,3 +153,7 @@ $settings['skip_permissions_hardening'] = TRUE;
  * the language or field module.
  */
 # $settings['config_exclude_modules'] = ['devel', 'stage_file_proxy'];
+  include_once(DRUPAL_ROOT . './../vendor/kint-php/kint/src/Kint.php');
+  if (class_exists('Kint')) {
+    Kint::$max_depth = 4;
+   }

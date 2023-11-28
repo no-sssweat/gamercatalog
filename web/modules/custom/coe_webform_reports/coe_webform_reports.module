@@ -6,14 +6,19 @@
  *
  */
 
-use Drupal\Core\Serialization\Yaml;
+use Drupal\Component\Serialization\Yaml;
 use Drupal\webform\WebformInterface;
 use Drupal\webform\WebformSubmissionInterface;
+use Google\Analytics\Data\V1beta\Filter;
+use Google\Analytics\Data\V1beta\Filter\InListFilter;
+use Google\Analytics\Data\V1beta\Filter\StringFilter;
+use Google\Analytics\Data\V1beta\Filter\StringFilter\MatchType;
+use Google\Analytics\Data\V1beta\FilterExpression;
+use Google\Analytics\Data\V1beta\FilterExpressionList;
 use Google\Client;
 use Google\Analytics\Data\V1beta\DateRange;
 use Google\Analytics\Data\V1beta\Dimension;
 use Google\Analytics\Data\V1beta\Metric;
-use Google\Auth\CredentialsLoader;
 use Google\Analytics\Data\V1beta\BetaAnalyticsDataClient;
 
 /**
@@ -21,47 +26,38 @@ use Google\Analytics\Data\V1beta\BetaAnalyticsDataClient;
  */
 function coe_webform_reports_form_alter(&$form, &$form_state, $form_id) {
 
-//  _api_test();
+  if ($form_id == 'webform_edit_form') {
+    $webform = $form_state->getFormObject()->getEntity();;
+    // Need to move this to a service method
+    /** @var \Drupal\Core\Queue\QueueFactory $queue_factory */
+    $queue_factory = \Drupal::service('queue');
+    /** @var \Drupal\Core\Queue\QueueInterface $queue */
+    $queue = $queue_factory->get('coe_webform_reports_view_count');
+    //Add to the queue.
+    $item = new \stdClass();
+    $item->id = $webform->id();
+    $item->path = $webform->url();
+    $queue->createItem($item);
+  }
 
-  // adds custom fields to webform configuration
-  if ($form_id == '"webform_edit_form') {
+  // Note: Could not do this in submit handler due to AJAX nor in hook_entity_insert().
+  // Add completion_time field to webform entity if it doesn't exist yet.
+  // This field will keep track of how long the user took to fill out the form.
+  $form_ids = [
+    'webform_source_form',
+    'webform_edit_form',
+  ];
+  if (in_array($form_id, $form_ids)) {
     $webform = $form_state->getFormObject()->getEntity();
-    $elements = Yaml::decode($webform->get('elements'));
-
-    // add a field
-    $elements['completion_time'] = [
-      '#type' => 'textfield',
-      '#title' => 'Completion Time',
-      '#readonly' => true,
-      '#input_hide' => true,
-    ];
-
-    $webform->set('elements', Yaml::encode($elements));
-    $webform->save();
+    coe_webform_pdf_add_completion_time_field($webform);
   }
-  // adds dummy time field to keep track of how long user took to submit form.
+
   $current_route = \Drupal::routeMatch()->getRouteName();
+  // Is a webform
   if (!empty($form['#webform_id']) && $current_route === 'entity.webform.canonical') {
-    $form['coe_webform_reports_start_time'] = [
-      '#type' => 'textfield',
-      '#title' => t('Start Time'),
-      '#default_value' => time(),
-      '#attributes' => [
-        'readonly' => 'readonly',
-      ],
-    ];
+    $form['#attached']['library'][] = 'coe_webform_reports/time-tracker';
   }
 
-}
-
-/**
- * Implements hook_webform_submission_presave().
- */
-function coe_webform_reports_webform_submission_presave(WebformSubmissionInterface $webform_submission) {
-    // Calculate and the save the completion time value
-    $start_time = $webform_submission->getElementData('coe_webform_reports_start_time');
-    $completion_time = '';
-    $webform_submission->setElementData('completion_time', $completion_time);
 }
 
 /**
@@ -115,103 +111,76 @@ function _api_test() {
 // */
 function _getReport($analytics) {
 
-  putenv('GOOGLE_APPLICATION_CREDENTIALS=modules/custom/coe_webform_reports/Quickstart-b464f8449936.json');
+  $google_api_service_client = \Drupal::entityTypeManager()->getStorage('google_api_service_client')->load('ga4');
+  $googleService = \Drupal::service('google_api_service_client.client');
+  // Set the account.
+  $googleService->setGoogleApiClient($google_api_service_client);
+  $creds = $googleService->googleApiServiceClient->getAuthConfig();
 
   // Replace with your view ID, for example XXXX.
   $propertyId = "413264721";
 
-  $client = new BetaAnalyticsDataClient();
+  $client = new BetaAnalyticsDataClient(['credentials' => $creds]);
+
+  // Create the GA4 property ID.
+  $property = "properties/$propertyId";
 
   $dateRange = new DateRange();
-  $dateRange->setStartDate('7daysAgo');
+  $dateRange->setStartDate('2023-10-01');
   $dateRange->setEndDate('today');
 
-  $dimensions = [new Dimension(['name' => 'pagePath'])];
-  $metrics = [new Metric(['name' => 'itemsViewed'])];
+  $dimensions = [new Dimension(['name' => 'contentId'])];
+  $metrics = [new Metric(['name' => 'screenPageViews'])];
+
+  // Set the specific contentId you want to filter by.
+  $specificContentId = 'webform-submission-contact-add-form';
+
+  // Will return the sum of those two
+  $dimensionFilter = new FilterExpression([
+    'filter' => new Filter([
+      'field_name' => 'pagePath',
+      'in_list_filter' => new inListFilter([
+        'values' => ['/form/test', '/form/contact']
+      ])
+    ])
+  ]);
+  ;
 
   $response = $client->runReport([
     'property' => 'properties/' . $propertyId,
-    'dateRanges' => [$dateRange], // Include the date range here
-    'dimensions' => $dimensions, // Include dimensions here
-    'metrics' => $metrics, // Include metrics here
-    // ... other parameters ...
+    'dateRanges' => [$dateRange],
+//    'dimensions' => $dimensions,
+    'metrics' => $metrics,
+    'dimensionFilter' => $dimensionFilter,
   ]);
 
-//  ksm($response);
+  if ($response) {
+    foreach ($response->getRows() as $row) {
+      $count = $row->getMetricValues()[0]->getValue();
+    }
+    $client->close();
+    return $count;
+  }
 
-//  foreach ($response->getRows() as $row) {
-//    foreach ($row->getDimensionValues() as $dimensionValue) {
-//      ksm($dimensionValue);
-////      print 'Dimension Value: ' . $dimensionValue->getValue() . PHP_EOL;
-//    }
-//  }
+}
 
-
-//  // Create the DateRange object.
-//  $dateRange = new Google_Service_AnalyticsReporting_DateRange();
-//  $dateRange->setStartDate("7daysAgo");
-//  $dateRange->setEndDate("today");
-//
-//  // Create the Metrics object.
-//  $sessions = new Google_Service_AnalyticsReporting_Metric();
-//  $sessions->setExpression("ga:sessions");
-//  $sessions->setAlias("sessions");
-//
-//  // Create the ReportRequest object.
-//  $request = new Google_Service_AnalyticsReporting_ReportRequest();
-//  $request->setViewId($propertyId);
-//  $request->setDateRanges($dateRange);
-//  $request->setMetrics(array($sessions));
-//
-//  $body = new Google_Service_AnalyticsReporting_GetReportsRequest();
-//  $body->setReportRequests(array( $request));
-////  ksm($analytics->reports->batchGet($body));
-///
-///
-
-
-
-
-//// Replace with the path to your service account JSON key file
-//  $keyFilePath = '/path/to/your-service-account-key.json';
-//
-//// Replace with your GA4 Property ID
-//  $propertyId = 'your-property-id';
-//
-//// Create a client with your service account credentials
-//  $credentials = CredentialsLoader::fromKeyValueFile($keyFilePath);
-//  $client = new AlphaAnalyticsDataClient(['credentials' => $credentials]);
-//
-//// Define the date range for your query
-//  $dateRange = new DateRange();
-//  $dateRange->setStartDate('7daysAgo');
-//  $dateRange->setEndDate('today');
-//
-//// Define the dimensions and metrics for your query
-//  $dimensions = [new Dimension(['name' => 'pagePath'])];
-//  $metrics = [new Metric(['name' => 'pageViews'])];
-//
-//// Define filter expressions (if needed)
-//  $filterExpression = new FilterExpression();
-//  $filterExpression->setField('pagePath');
-//  $filterExpression->setOperator(FilterOperator::REGEXP);
-//  $filterExpression->setValue('/example-page/'); // Replace with your desired page path
-//  $filterExpressionList = new FilterExpressionList();
-//  $filterExpressionList->setExpressions([$filterExpression]);
-//
-//// Define order by expression (if needed)
-//  $orderBy = new OrderByExpression();
-//  $orderBy->setFieldName('pageViews');
-//  $orderBy->setOrderType(OrderBy\OrderBy\SortOrder::DESCENDING);
-//
-//// Make the query request
-//  $response = $client->runReport([
-//    'property' => "properties/$propertyId",
-//    'dateRanges' => [$dateRange],
-//    'dimensions' => $dimensions,
-//    'metrics' => $metrics,
-//    'filter' => $filterExpressionList,
-//    'orderBys' => [$orderBy],
-//  ]);
-
+/**
+ * Adds a submission_pdf field to the webform if it doesn't exist already.
+ *
+ * @return void
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function coe_webform_pdf_add_completion_time_field(WebformInterface $webform) {
+  $webform_elements = $webform->get('elements');
+  $no_field_added_yet = strpos($webform_elements, "completion_time") === false;
+  if (!empty($webform_elements) && $no_field_added_yet) {
+    $elements = Yaml::decode($webform_elements);
+    // add the field
+    $elements['completion_time'] = [
+      '#type' => 'textfield',
+      '#title' => 'Completion Time',
+    ];
+    $webform->set('elements', Yaml::encode($elements));
+    $webform->save();
+  }
 }

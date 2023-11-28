@@ -3,3 +3,14 @@ custom-ga4-event:
     js/custom-ga4-event.js: {}
   dependencies:
     - core/jquery
+
+time-tracker:
+  js:
+    js/time-tracker.js: {}
+  dependencies:
+    - core/jquery
+    - core/once
+
+  css:
+    component:
+      css/time-tracker.css: {}

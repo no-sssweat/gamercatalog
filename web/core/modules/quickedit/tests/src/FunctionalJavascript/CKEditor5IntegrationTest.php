@@ -12,6 +12,7 @@ use Symfony\Component\Validator\ConstraintViolation;
  * Tests that Quick Edit can load CKEditor 5.
  *
  * @group quickedit
+ * @group legacy
  * @internal
  */
 class CKEditor5IntegrationTest extends QuickEditJavascriptTestBase {
@@ -205,9 +206,6 @@ class CKEditor5IntegrationTest extends QuickEditJavascriptTestBase {
 
     $this->drupalGet('node/' . $node->id());
 
-    // Confirm that the JavaScript that generates IE11 warnings loads.
-    $assert_session->elementExists('css', 'script[src*="ckeditor5/js/ie11.user.warnings.js"]');
-
     // Initial state.
     $this->awaitQuickEditForEntity('node', 1);
     $this->assertEntityInstanceStates([
@@ -228,6 +226,9 @@ class CKEditor5IntegrationTest extends QuickEditJavascriptTestBase {
       'node/1/title/en/full' => 'candidate',
       'node/1/body/en/full' => 'candidate',
     ]);
+
+    // Confirm that the JavaScript that generates IE11 warnings loads.
+    $assert_session->elementExists('css', 'script[src*="ckeditor5/js/ie11.user.warnings.js"]');
 
     // Click the body field.
     hold_test_response(TRUE);

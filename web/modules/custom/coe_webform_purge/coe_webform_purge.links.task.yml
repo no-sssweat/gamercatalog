@@ -1,0 +1,5 @@
+coe_webform_purge.purge:
+  title: 'Purge Settings'
+  route_name: coe_webform_purge.settings_form
+  base_route: entity.webform.canonical
+  weight: 70

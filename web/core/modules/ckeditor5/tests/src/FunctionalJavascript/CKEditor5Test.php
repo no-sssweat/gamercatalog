@@ -8,14 +8,15 @@ use Drupal\editor\Entity\Editor;
 use Drupal\file\Entity\File;
 use Drupal\filter\Entity\FilterFormat;
 use Drupal\node\Entity\Node;
+use Drupal\Tests\ckeditor5\Traits\CKEditor5TestTrait;
 use Drupal\Tests\TestFileCreationTrait;
 use Drupal\user\RoleInterface;
 use Symfony\Component\Validator\ConstraintViolation;
 
-// cspell:ignore esque upcasted
+// cspell:ignore esque splitbutton upcasted sourceediting
 
 /**
- * Tests for CKEditor5.
+ * Tests for CKEditor 5.
  *
  * @group ckeditor5
  * @internal
@@ -23,6 +24,7 @@ use Symfony\Component\Validator\ConstraintViolation;
 class CKEditor5Test extends CKEditor5TestBase {
 
   use TestFileCreationTrait;
+  use CKEditor5TestTrait;
 
   /**
    * {@inheritdoc}
@@ -32,7 +34,7 @@ class CKEditor5Test extends CKEditor5TestBase {
   ];
 
   /**
-   * Tests configuring CKEditor5 for existing content.
+   * Tests configuring CKEditor 5 for existing content.
    */
   public function testExistingContent() {
     $page = $this->getSession()->getPage();
@@ -83,9 +85,9 @@ class CKEditor5Test extends CKEditor5TestBase {
       'editor' => 'ckeditor5',
       'settings' => [
         'toolbar' => [
-          'items' => ['uploadImage'],
+          'items' => ['drupalInsertImage'],
         ],
-        'plugins' => [],
+        'plugins' => ['ckeditor5_imageResize' => ['allow_resize' => FALSE]],
       ],
       'image_upload' => [
         'status' => TRUE,
@@ -105,29 +107,29 @@ class CKEditor5Test extends CKEditor5TestBase {
     ));
 
     $this->drupalGet('node/add');
+    $this->waitForEditor();
     $page->fillField('title[0][value]', 'My test content');
+
+    // Ensure that CKEditor 5 is focused.
+    $this->click('.ck-content');
+
     $this->assertNotEmpty($image_upload_field = $page->find('css', '.ck-file-dialog-button input[type="file"]'));
     $image = $this->getTestFiles('image')[0];
     $image_upload_field->attachFile($this->container->get('file_system')->realpath($image->uri));
-    $assert_session->assertWaitOnAjaxRequest();
+    $assert_session->waitForElementVisible('css', '.ck-widget.image');
 
-    $this->click('.ck-widget.image');
-    $balloon_panel = $page->find('css', '.ck-balloon-panel');
-    $balloon_buttons = $balloon_panel->findAll('css', '[aria-label="Image toolbar"] button');
-    $this->assertSame('Change image text alternative', $balloon_buttons[0]->find('css', '.ck-button__label')->getHtml());
-    $balloon_buttons[0]->click();
-    $assert_session->waitForElementVisible('css', '.ck-balloon-panel .ck-text-alternative-form');
+    $this->assertNotEmpty($assert_session->waitForElementVisible('css', '.ck-balloon-panel .ck-text-alternative-form'));
     $alt_override_input = $page->find('css', '.ck-balloon-panel .ck-text-alternative-form input[type=text]');
     $this->assertSame('', $alt_override_input->getValue());
     $alt_override_input->setValue('</em> Kittens & llamas are cute');
-    $balloon_panel->pressButton('Save');
+    $this->getBalloonButton('Save')->click();
     $page->pressButton('Save');
 
     $uploaded_image = File::load(1);
     $image_uuid = $uploaded_image->uuid();
     $image_url = $this->container->get('file_url_generator')->generateString($uploaded_image->getFileUri());
     $this->drupalGet('node/1');
-    $assert_session->elementExists('xpath', sprintf('//img[@alt="</em> Kittens & llamas are cute" and @data-entity-uuid="%s" and @data-entity-type="file"]', $image_uuid));
+    $this->assertNotEmpty($assert_session->waitForElement('xpath', sprintf('//img[@alt="</em> Kittens & llamas are cute" and @data-entity-uuid="%s" and @data-entity-type="file"]', $image_uuid)));
 
     // Drupal CKEditor 5 integrations overrides the CKEditor 5 HTML writer to
     // escape ampersand characters (&) and the angle brackets (< and >). This is
@@ -225,6 +227,31 @@ class CKEditor5Test extends CKEditor5TestBase {
     $this->triggerKeyUp('.ckeditor5-toolbar-item-textPartLanguage', 'ArrowDown');
     $assert_session->assertWaitOnAjaxRequest();
 
+    // The CKEditor 5 module should warn that `<span>` cannot be created.
+    $assert_session->waitForElement('css', '[role=alert][data-drupal-message-type="warning"]:contains("The Language plugin needs another plugin to create <span>, for it to be able to create the following attributes: <span lang dir>. Enable a plugin that supports creating this tag. If none exists, you can configure the Source Editing plugin to support it.")');
+
+    // Make `<span>` creatable.
+    $this->assertNotEmpty($assert_session->elementExists('css', '.ckeditor5-toolbar-item-sourceEditing'));
+    $this->triggerKeyUp('.ckeditor5-toolbar-item-sourceEditing', 'ArrowDown');
+    $assert_session->assertWaitOnAjaxRequest();
+    // The Source Editing plugin settings form should now be present and should
+    // have no allowed tags configured.
+    $page->clickLink('Source editing');
+    $this->assertNotNull($assert_session->waitForElementVisible('css', '[data-drupal-selector="edit-editor-settings-plugins-ckeditor5-sourceediting-allowed-tags"]'));
+    $javascript = <<<JS
+      const allowedTags = document.querySelector('[data-drupal-selector="edit-editor-settings-plugins-ckeditor5-sourceediting-allowed-tags"]');
+      allowedTags.value = '<span>';
+      allowedTags.dispatchEvent(new Event('input'));
+JS;
+    $this->getSession()->executeScript($javascript);
+    // Dispatching an `input` event does not work in WebDriver. Enabling another
+    // toolbar item which has no associated HTML elements forces it.
+    $this->triggerKeyUp('.ckeditor5-toolbar-item-undo', 'ArrowDown');
+    $assert_session->assertWaitOnAjaxRequest();
+
+    // Confirm there are no longer any warnings.
+    $assert_session->waitForElementRemoved('css', '[data-drupal-messages] [role="alert"]');
+
     // Test for "United Nations' official languages" option.
     $languages = LanguageManager::getUnitedNationsLanguageList();
     $this->languageOfPartsPluginTestHelper($page, $assert_session, $languages, "un");
@@ -276,6 +303,67 @@ class CKEditor5Test extends CKEditor5TestBase {
   }
 
   /**
+   * Gets the titles of the vertical tabs in the given container.
+   *
+   * @param string $container_selector
+   *   The container in which to look for vertical tabs.
+   * @param bool $visible_only
+   *   (optional) Whether to restrict to only the visible vertical tabs. TRUE by
+   *   default.
+   *
+   * @return string[]
+   *   The titles of all vertical tabs menu items, restricted to only
+   *   visible ones by default.
+   *
+   * @throws \LogicException
+   */
+  private function getVerticalTabs(string $container_selector, bool $visible_only = TRUE): array {
+    $page = $this->getSession()->getPage();
+
+    // Ensure the container exists.
+    $container = $page->find('css', $container_selector);
+    if ($container === NULL) {
+      throw new \LogicException('The given container should exist.');
+    }
+
+    // Make sure that the container selector contains exactly one Vertical Tabs
+    // UI component.
+    $vertical_tabs = $container->findAll('css', '.vertical-tabs');
+    if (count($vertical_tabs) != 1) {
+      throw new \LogicException('The given container should contain exactly one Vertical Tabs component.');
+    }
+
+    $vertical_tabs = $container->findAll('css', '.vertical-tabs__menu-item');
+    $vertical_tabs_titles = [];
+    foreach ($vertical_tabs as $vertical_tab) {
+      if ($visible_only && !$vertical_tab->isVisible()) {
+        continue;
+      }
+      $title = $vertical_tab->find('css', '.vertical-tabs__menu-item-title')->getHtml();
+      // When retrieving visible vertical tabs, mark the selected one.
+      if ($visible_only && $vertical_tab->hasClass('is-selected')) {
+        $title = "➡️$title";
+      }
+      $vertical_tabs_titles[] = $title;
+    }
+    return $vertical_tabs_titles;
+  }
+
+  /**
+   * Enables a disabled CKEditor 5 toolbar item.
+   *
+   * @param string $toolbar_item_id
+   *   The toolbar item to enable.
+   */
+  protected function enableDisabledToolbarItem(string $toolbar_item_id): void {
+    $assert_session = $this->assertSession();
+    $assert_session->elementExists('css', ".ckeditor5-toolbar-disabled .ckeditor5-toolbar-item-$toolbar_item_id");
+    $this->triggerKeyUp(".ckeditor5-toolbar-item-$toolbar_item_id", 'ArrowDown');
+    $assert_session->elementNotExists('css', ".ckeditor5-toolbar-disabled .ckeditor5-toolbar-item-$toolbar_item_id");
+    $assert_session->elementExists('css', ".ckeditor5-toolbar-active .ckeditor5-toolbar-item-$toolbar_item_id");
+  }
+
+  /**
    * Confirms active tab status is intact after AJAX refresh.
    */
   public function testActiveTabsMaintained() {
@@ -285,77 +373,134 @@ class CKEditor5Test extends CKEditor5TestBase {
     $this->createNewTextFormat($page, $assert_session);
     $assert_session->assertWaitOnAjaxRequest();
 
-    // Ensure the HTML filter tab is visible.
-    $this->assertNotEmpty($assert_session->waitForElementVisible('css', 'a[href^="#edit-filters-filter-html-settings"]'));
+    // Initial vertical tabs: 3 for filters, 1 for CKE5 plugins.
+    $this->assertSame([
+      'Limit allowed HTML tags and correct faulty HTML',
+      'Convert URLs into links',
+      'Embed media',
+    ], $this->getVerticalTabs('#filter-settings-wrapper', FALSE));
+    $this->assertSame([
+      'Headings',
+    ], $this->getVerticalTabs('#plugin-settings-wrapper', FALSE));
 
-    // Enable media embed to make a second filter config tab visible.
+    // Initial visible vertical tabs: 1 for filters, 1 for CKE5 plugins.
+    $this->assertSame([
+      '➡️Limit allowed HTML tags and correct faulty HTML',
+    ], $this->getVerticalTabs('#filter-settings-wrapper'));
+    $this->assertSame([
+      '➡️Headings',
+    ], $this->getVerticalTabs('#plugin-settings-wrapper'));
+
+    // Enable media embed to make a second filter config vertical tab visible.
     $this->assertTrue($page->hasUncheckedField('filters[media_embed][status]'));
+    $this->assertNull($assert_session->waitForElementVisible('css', '[data-drupal-selector=edit-filters-media-embed-settings]', 0));
     $page->checkField('filters[media_embed][status]');
+    $this->assertNotNull($assert_session->waitForElementVisible('css', '[data-drupal-selector=edit-filters-media-embed-settings]', 0));
     $assert_session->assertWaitOnAjaxRequest();
-    $assert_session->responseContains('Media types selectable in the Media Library');
-    $assert_session->assertWaitOnAjaxRequest();
+    // Filter plugins vertical tabs behavior: the filter plugin settings
+    // vertical tab with the heaviest filter weight is active by default.
+    // Hence enabling the media_embed filter (weight 100) results in its
+    // vertical tab being activated (filter_html's weight is -10).
+    // @see core/modules/filter/filter.admin.js
+    $this->assertSame([
+      'Limit allowed HTML tags and correct faulty HTML',
+      '➡️Embed media',
+    ], $this->getVerticalTabs('#filter-settings-wrapper'));
+    $this->assertSame([
+      '➡️Headings',
+      'Media',
+    ], $this->getVerticalTabs('#plugin-settings-wrapper'));
 
-    // Enable upload image to add one plugin config form.
-    $this->assertNotEmpty($assert_session->waitForElement('css', '.ckeditor5-toolbar-item-uploadImage'));
-    $this->triggerKeyUp('.ckeditor5-toolbar-item-uploadImage', 'ArrowDown');
-    // cSpell:disable-next-line
-    $this->assertNotEmpty($assert_session->waitForElement('css', 'a[href^="#edit-editor-settings-plugins-ckeditor5-imageupload"]'));
-    $this->assertNotEmpty($assert_session->waitForElement('css', '.ckeditor5-toolbar-active .ckeditor5-toolbar-item-uploadImage'));
+    // Enable upload image to add a third (and fourth) CKE5 plugin vertical tab.
+    $this->enableDisabledToolbarItem('drupalInsertImage');
     $assert_session->assertWaitOnAjaxRequest();
+    // The active CKE5 plugin settings vertical tab is unchanged.
+    $this->assertSame([
+      '➡️Headings',
+      'Image',
+      'Image resize',
+      'Media',
+    ], $this->getVerticalTabs('#plugin-settings-wrapper'));
+    // The active filter plugin settings vertical tab is unchanged.
+    $this->assertSame([
+      'Limit allowed HTML tags and correct faulty HTML',
+      '➡️Embed media',
+    ], $this->getVerticalTabs('#filter-settings-wrapper'));
 
-    $page->clickLink('Image Upload');
+    // Open the CKE5 "Image" plugin settings vertical tab, interact with the
+    // subform and observe that the AJAX requests those interactions trigger do
+    // not change the active vertical tabs.
+    $page->clickLink('Image');
     $assert_session->waitForText('Enable image uploads');
-    $this->assertTrue($page->hasUncheckedField('editor[settings][plugins][ckeditor5_imageUpload][status]'));
-    $page->checkField('editor[settings][plugins][ckeditor5_imageUpload][status]');
+    $this->assertSame([
+      'Headings',
+      '➡️Image',
+      'Image resize',
+      'Media',
+    ], $this->getVerticalTabs('#plugin-settings-wrapper'));
+    $this->assertTrue($page->hasUncheckedField('editor[settings][plugins][ckeditor5_image][status]'));
+    $page->checkField('editor[settings][plugins][ckeditor5_image][status]');
     $assert_session->assertWaitOnAjaxRequest();
-
-    // Enable language to add a second plugin config form.
-    $this->assertNotEmpty($assert_session->waitForElement('css', '.ckeditor5-toolbar-item-textPartLanguage'));
-    $this->triggerKeyUp('.ckeditor5-toolbar-item-textPartLanguage', 'ArrowDown');
-    $this->assertNotEmpty($assert_session->waitForElement('css', 'a[href^="#edit-editor-settings-plugins-ckeditor5-language"]'));
-    $this->assertNotEmpty($assert_session->waitForElement('css', '.ckeditor5-toolbar-active .ckeditor5-toolbar-item-textPartLanguage'));
-    $assert_session->assertWaitOnAjaxRequest();
+    $this->assertSame([
+      'Headings',
+      '➡️Image',
+      'Image resize',
+      'Media',
+    ], $this->getVerticalTabs('#plugin-settings-wrapper'));
+    $this->assertSame([
+      'Limit allowed HTML tags and correct faulty HTML',
+      '➡️Embed media',
+    ], $this->getVerticalTabs('#filter-settings-wrapper'));
 
     $page->pressButton('Save configuration');
     $assert_session->pageTextContains('Added text format ckeditor5');
 
-    // Leave and return to the config form, both sets of tabs should then have
-    // the first tab active by default.
+    // Leave and return to the config form, wait for initialized Vertical Tabs.
     $this->drupalGet('admin/config/content/formats/');
     $this->drupalGet('admin/config/content/formats/manage/ckeditor5');
-
     $assert_session->waitForElement('css', '.vertical-tabs__menu-item.is-selected');
 
-    $plugin_settings_vertical_tabs = $page->findAll('css', '#plugin-settings-wrapper .vertical-tabs__menu-item');
-    $filter_settings = $page->find('xpath', '//*[contains(@class, "js-form-type-vertical-tabs")]/label[contains(text(), "Filter settings")]/..');
-    $filter_settings_vertical_tabs = $filter_settings->findAll('css', '.vertical-tabs__menu-item');
+    // The first CKE5 plugin settings vertical tab is active by default.
+    $this->assertSame([
+      '➡️Headings',
+      'Image',
+      'Image resize',
+      'Media',
+    ], $this->getVerticalTabs('#plugin-settings-wrapper'));
+    // Filter plugins vertical tabs behavior: the filter plugin settings
+    // vertical tab with the heaviest filter weight is active by default.
+    // Hence enabling the media_embed filter (weight 100) results in its
+    // vertical tab being activated (filter_html's weight is -10).
+    // @see core/modules/filter/filter.admin.js
+    $this->assertSame([
+      'Limit allowed HTML tags and correct faulty HTML',
+      '➡️Embed media',
+    ], $this->getVerticalTabs('#filter-settings-wrapper'));
 
-    $this->assertTrue($plugin_settings_vertical_tabs[0]->hasClass('is-selected'), "Expected plugin tab 1 selected on initial build");
-    $this->assertFalse($plugin_settings_vertical_tabs[1]->hasClass('is-selected'), "Expected plugin tab 2 not selected on initial build");
+    // Click the 3rd CKE5 plugin vertical tab.
+    $page->clickLink($this->getVerticalTabs('#plugin-settings-wrapper')[2]);
+    $this->assertSame([
+      'Headings',
+      'Image',
+      '➡️Image resize',
+      'Media',
+    ], $this->getVerticalTabs('#plugin-settings-wrapper'));
 
-    $this->assertFalse($filter_settings_vertical_tabs[0]->hasClass('is-selected'), "Expected filter tab 1 not selected on initial build");
-    $this->assertTrue($filter_settings_vertical_tabs[2]->hasClass('is-selected'), "Expected (visible) filter tab 2 selected on initial build");
-
-    $plugin_settings_vertical_tabs[1]->click();
-    $filter_settings_vertical_tabs[0]->click();
+    // Add another CKEditor 5 toolbar item just to trigger an AJAX refresh.
+    $this->enableDisabledToolbarItem('blockQuote');
     $assert_session->assertWaitOnAjaxRequest();
-
-    $this->assertFalse($plugin_settings_vertical_tabs[0]->hasClass('is-selected'), "Expected plugin tab 1 deselected after click");
-    $this->assertTrue($plugin_settings_vertical_tabs[1]->hasClass('is-selected'), "Expected plugin tab 2 selected after click");
-
-    $this->assertTrue($filter_settings_vertical_tabs[0]->hasClass('is-selected'), "Expected filter tab 1 selected after click");
-    $this->assertFalse($filter_settings_vertical_tabs[2]->hasClass('is-selected'), "Expected (visible) filter tab 2 deselected after click");
-
-    // Add a plugin just to trigger AJAX refresh.
-    $this->assertNotEmpty($assert_session->waitForElement('css', '.ckeditor5-toolbar-item-blockQuote'));
-    $this->triggerKeyUp('.ckeditor5-toolbar-item-blockQuote', 'ArrowDown');
-    $assert_session->assertWaitOnAjaxRequest();
-
-    $this->assertFalse($plugin_settings_vertical_tabs[0]->hasClass('is-selected'), "Expected plugin tab 1 deselected after AJAX refresh");
-    $this->assertTrue($plugin_settings_vertical_tabs[1]->hasClass('is-selected'), "Expected plugin tab 2 selected after AJAX refresh");
-
-    $this->assertTrue($filter_settings_vertical_tabs[0]->hasClass('is-selected'), "Expected filter tab 1 selected after AJAX refresh");
-    $this->assertFalse($filter_settings_vertical_tabs[1]->hasClass('is-selected'), "Expected filter tab 2 deselected after AJAX refresh");
+    // The active CKE5 plugin settings vertical tab is unchanged.
+    $this->assertSame([
+      'Headings',
+      'Image',
+      '➡️Image resize',
+      'Media',
+    ], $this->getVerticalTabs('#plugin-settings-wrapper'));
+    // The active filter plugin settings vertical tab is unchanged.
+    $this->assertSame([
+      'Limit allowed HTML tags and correct faulty HTML',
+      '➡️Embed media',
+    ], $this->getVerticalTabs('#filter-settings-wrapper'));
   }
 
   /**
@@ -366,11 +511,11 @@ class CKEditor5Test extends CKEditor5TestBase {
     $assert_session = $this->assertSession();
 
     $this->createNewTextFormat($page, $assert_session);
-    $this->assertNotEmpty($assert_session->waitForElement('css', '.ckeditor5-toolbar-item-uploadImage'));
-    $this->triggerKeyUp('.ckeditor5-toolbar-item-uploadImage', 'ArrowDown');
+    $this->assertNotEmpty($assert_session->waitForElement('css', '.ckeditor5-toolbar-item-drupalInsertImage'));
+    $this->triggerKeyUp('.ckeditor5-toolbar-item-drupalInsertImage', 'ArrowDown');
     $assert_session->assertWaitOnAjaxRequest();
-    $page->clickLink('Image Upload');
-    $page->checkField('editor[settings][plugins][ckeditor5_imageUpload][status]');
+    $page->clickLink('Image');
+    $page->checkField('editor[settings][plugins][ckeditor5_image][status]');
     $assert_session->assertWaitOnAjaxRequest();
     $page->checkField('filters[editor_file_reference][status]');
     $assert_session->assertWaitOnAjaxRequest();
@@ -378,6 +523,10 @@ class CKEditor5Test extends CKEditor5TestBase {
 
     $this->drupalGet('node/add');
     $page->fillField('title[0][value]', 'My test content');
+
+    // Ensure that CKEditor 5 is focused.
+    $this->click('.ck-content');
+
     $this->assertNotEmpty($image_upload_field = $page->find('css', '.ck-file-dialog-button input[type="file"]'));
     $image = $this->getTestFiles('image')[0];
     $image_upload_field->attachFile($this->container->get('file_system')->realpath($image->uri));
@@ -385,6 +534,13 @@ class CKEditor5Test extends CKEditor5TestBase {
     // upload has completed and the image has been downcast.
     // @see https://www.drupal.org/project/drupal/issues/3250587
     $this->assertNotEmpty($assert_session->waitForElement('css', '.ck-content img[data-entity-uuid]'));
+
+    // Add alt text to the image.
+    $this->assertNotEmpty($assert_session->waitForElementVisible('css', '.image.ck-widget > img'));
+    $this->assertNotEmpty($assert_session->waitForElementVisible('css', '.ck-balloon-panel .ck-text-alternative-form'));
+    $alt_override_input = $page->find('css', '.ck-balloon-panel .ck-text-alternative-form input[type=text]');
+    $alt_override_input->setValue('There is now alt text');
+    $this->getBalloonButton('Save')->click();
     $page->pressButton('Save');
 
     $uploaded_image = File::load(1);
@@ -394,7 +550,7 @@ class CKEditor5Test extends CKEditor5TestBase {
 
     // Ensure that width, height, and length attributes are not stored in the
     // database.
-    $this->assertEquals(sprintf('<img data-entity-uuid="%s" data-entity-type="file" src="%s">', $image_uuid, $image_url), Node::load(1)->get('body')->value);
+    $this->assertEquals(sprintf('<img data-entity-uuid="%s" data-entity-type="file" src="%s" alt="There is now alt text">', $image_uuid, $image_url), Node::load(1)->get('body')->value);
 
     // Ensure that data-entity-uuid and data-entity-type attributes are upcasted
     // correctly to CKEditor model.
@@ -433,30 +589,117 @@ class CKEditor5Test extends CKEditor5TestBase {
   }
 
   /**
-   * Ensures that images can have caption set.
+   * Tests list plugin.
    */
-  public function testImageCaption() {
+  public function testListPlugin() {
+    FilterFormat::create([
+      'format' => 'test_format',
+      'name' => 'CKEditor 5 with list',
+      'roles' => [RoleInterface::AUTHENTICATED_ID],
+    ])->save();
+    Editor::create([
+      'format' => 'test_format',
+      'editor' => 'ckeditor5',
+      'settings' => [
+        'toolbar' => [
+          'items' => ['sourceEditing', 'numberedList'],
+        ],
+        'plugins' => [
+          'ckeditor5_list' => [
+            'reversed' => FALSE,
+            'startIndex' => FALSE,
+          ],
+          'ckeditor5_sourceEditing' => [
+            'allowed_tags' => [],
+          ],
+        ],
+      ],
+    ])->save();
+    $this->assertSame([], array_map(
+      function (ConstraintViolation $v) {
+        return (string) $v->getMessage();
+      },
+      iterator_to_array(CKEditor5::validatePair(
+        Editor::load('test_format'),
+        FilterFormat::load('test_format')
+      ))
+    ));
+    $ordered_list_html = '<ol><li>apple</li><li>banana</li><li>cantaloupe</li></ol>';
+    $page = $this->getSession()->getPage();
+    $assert_session = $this->assertSession();
+    $this->drupalGet('node/add');
+    $page->fillField('title[0][value]', 'My test content');
+    $this->pressEditorButton('Source');
+    $source_text_area = $assert_session->waitForElement('css', '.ck-source-editing-area textarea');
+    $source_text_area->setValue($ordered_list_html);
+    // Click source again to make source inactive and have the numbered list
+    // splitbutton active.
+    $this->pressEditorButton('Source');
+    $numbered_list_dropdown_selector = '.ck-splitbutton__arrow';
+
+    // Check that there is no dropdown available for the numbered list because
+    // both reversed and startIndex are FALSE.
+    $assert_session->elementNotExists('css', $numbered_list_dropdown_selector);
+    // Save content so source content is kept after changing the editor config.
+    $page->pressButton('Save');
+    $edit_url = $this->getSession()->getCurrentURL() . '/edit';
+    $this->drupalGet($edit_url);
+    $this->waitForEditor();
+
+    // Enable the reversed functionality.
+    $editor = Editor::load('test_format');
+    $settings = $editor->getSettings();
+    $settings['plugins']['ckeditor5_list']['reversed'] = TRUE;
+    $editor->setSettings($settings);
+    $editor->save();
+    $this->getSession()->reload();
+    $this->waitForEditor();
+    $this->click($numbered_list_dropdown_selector);
+    $reversed_order_button_selector = '.ck.ck-button.ck-numbered-list-properties__reversed-order';
+    $assert_session->elementExists('css', $reversed_order_button_selector);
+    $assert_session->elementTextEquals('css', $reversed_order_button_selector, 'Reversed order');
+    $start_index_element_selector = '.ck.ck-numbered-list-properties__start-index';
+    $assert_session->elementNotExists('css', $start_index_element_selector);
+
+    // Have both the reversed and the start index enabled.
+    $editor = Editor::load('test_format');
+    $settings = $editor->getSettings();
+    $settings['plugins']['ckeditor5_list']['startIndex'] = TRUE;
+    $editor->setSettings($settings);
+    $editor->save();
+    $this->getSession()->reload();
+    $this->waitForEditor();
+    $this->click($numbered_list_dropdown_selector);
+    $assert_session->elementExists('css', $reversed_order_button_selector);
+    $assert_session->elementTextEquals('css', $reversed_order_button_selector, 'Reversed order');
+    $assert_session->elementExists('css', $start_index_element_selector);
+  }
+
+  /**
+   * Ensures that CKEditor 5 retains filter_html's allowed global attributes.
+   *
+   * FilterHtml always forbids the `style` and `on*` attributes, and always
+   * allows the `lang` attribute (with any value) and the `dir` attribute (with
+   * either `ltr` or `rtl` as value). It's important that those last two
+   * attributes are guaranteed to be retained.
+   *
+   * @see \Drupal\filter\Plugin\Filter\FilterHtml::getHTMLRestrictions()
+   * @see ckeditor5_globalAttributeDir
+   * @see ckeditor5_globalAttributeLang
+   * @see https://html.spec.whatwg.org/multipage/dom.html#global-attributes
+   */
+  public function testFilterHtmlAllowedGlobalAttributes(): void {
     $page = $this->getSession()->getPage();
     $assert_session = $this->assertSession();
 
     // Add a node with text rendered via the Plain Text format.
     $this->drupalGet('node/add');
-    $page->fillField('title[0][value]', 'My test content');
-    // Add image with data-caption. The foo attribute is added to be removed
-    // later by CKEditor to make sure CKEditor was able to downcast data.
-    $page->fillField('body[0][value]', '<img src="/sites/default/files/alpaca.jpg" data-caption="Alpacas &lt;em&gt;are&lt;/em&gt; cute" foo="bar">');
+    $page->fillField('title[0][value]', 'Multilingual Hello World');
+    // cSpell:disable-next-line
+    $page->fillField('body[0][value]', '<p dir="ltr" lang="en">Hello World</p><p dir="rtl" lang="ar">مرحبا بالعالم</p>');
     $page->pressButton('Save');
 
     $this->createNewTextFormat($page, $assert_session);
-    $this->assertNotEmpty($assert_session->waitForElement('css', '.ckeditor5-toolbar-item-uploadImage'));
-    $this->triggerKeyUp('.ckeditor5-toolbar-item-uploadImage', 'ArrowDown');
-    $assert_session->assertWaitOnAjaxRequest();
-    $page->clickLink('Image Upload');
-    $assert_session->waitForText('Enable image uploads');
-    $page->checkField('editor[settings][plugins][ckeditor5_imageUpload][status]');
-    $assert_session->assertWaitOnAjaxRequest();
-    $page->checkField('filters[filter_caption][status]');
-    $assert_session->assertWaitOnAjaxRequest();
     $this->saveNewTextFormat($page, $assert_session);
 
     $this->drupalGet('node/1/edit');
@@ -464,12 +707,12 @@ class CKEditor5Test extends CKEditor5TestBase {
     $this->assertNotEmpty($assert_session->waitForText('Change text format?'));
     $page->pressButton('Continue');
 
-    $this->assertNotEmpty($assert_session->waitForElement('css', '.ck-editor'));
+    $this->waitForEditor();
     $page->pressButton('Save');
 
-    $this->assertEquals('<img src="/sites/default/files/alpaca.jpg" data-caption="Alpacas &lt;em&gt;are&lt;/em&gt; cute">', Node::load(1)->get('body')->value);
-    $assert_session->elementExists('xpath', '//figure/img[@src="/sites/default/files/alpaca.jpg" and not(@data-caption)]');
-    $assert_session->responseContains('<figcaption>Alpacas <em>are</em> cute</figcaption>');
+    // @todo Remove the expected `xml:lang` attributes in https://www.drupal.org/project/drupal/issues/1333730
+    // cSpell:disable-next-line
+    $assert_session->responseContains('<p dir="ltr" lang="en" xml:lang="en">Hello World</p><p dir="rtl" lang="ar" xml:lang="ar">مرحبا بالعالم</p>');
   }
 
 }

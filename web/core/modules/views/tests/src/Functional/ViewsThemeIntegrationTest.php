@@ -38,15 +38,14 @@ class ViewsThemeIntegrationTest extends ViewTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE): void {
-    parent::setUp($import_test_views);
+  protected function setUp($import_test_views = TRUE, $modules = ['views_test_config']): void {
+    parent::setUp($import_test_views, $modules);
 
     $this->enableViewsTestModule();
   }
 
   /**
-   * Tests for exceptions and successful execution of hook_views_pre_render()
-   * and hook_views_post_render() in theme and subtheme.
+   * Tests pre_render and post_render hooks in a theme and sub-theme.
    */
   public function testThemedViewPage() {
 

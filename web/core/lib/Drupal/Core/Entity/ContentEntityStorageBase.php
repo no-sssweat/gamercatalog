@@ -7,6 +7,7 @@ use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Cache\MemoryCache\MemoryCacheInterface;
 use Drupal\Core\Entity\Exception\AmbiguousBundleClassException;
 use Drupal\Core\Entity\Exception\BundleClassInheritanceException;
+use Drupal\Core\Entity\Exception\MissingBundleClassException;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Language\LanguageInterface;
@@ -157,9 +158,6 @@ abstract class ContentEntityStorageBase extends EntityStorageBase implements Con
    *
    * @return string|null
    *   The bundle or NULL if not set.
-   *
-   * @throws \Drupal\Core\Entity\EntityStorageException
-   *   When a corresponding bundle cannot be found and is expected.
    */
   protected function getBundleFromValues(array $values): ?string {
     $bundle = NULL;
@@ -202,9 +200,12 @@ abstract class ContentEntityStorageBase extends EntityStorageBase implements Con
     $bundle_info = $this->entityTypeBundleInfo->getBundleInfo($this->entityTypeId);
     $bundle_class = $bundle_info[$bundle]['class'] ?? NULL;
 
-    // Bundle classes should extend the main entity class.
+    // Bundle classes should exist and extend the main entity class.
     if ($bundle_class) {
-      if (!is_subclass_of($bundle_class, $entity_class)) {
+      if (!class_exists($bundle_class)) {
+        throw new MissingBundleClassException($bundle_class);
+      }
+      elseif (!is_subclass_of($bundle_class, $entity_class)) {
         throw new BundleClassInheritanceException($bundle_class, $entity_class);
       }
       return $bundle_class;
@@ -704,10 +705,12 @@ abstract class ContentEntityStorageBase extends EntityStorageBase implements Con
 
     $this->populateAffectedRevisionTranslations($entity);
 
-    // Populate the "revision_default" flag. We skip this when we are resaving
-    // the revision because this is only allowed for default revisions, and
-    // these cannot be made non-default.
-    if ($this->entityType->isRevisionable() && $entity->isNewRevision()) {
+    // Populate the "revision_default" flag. Skip this when we are resaving
+    // the revision, and the flag is set to FALSE, since it is not possible to
+    // set a previously default revision to non-default. However, setting a
+    // previously non-default revision to default is allowed for advanced
+    // use-cases.
+    if ($this->entityType->isRevisionable() && ($entity->isNewRevision() || $entity->isDefaultRevision())) {
       $revision_default_key = $this->entityType->getRevisionMetadataKey('revision_default');
       $entity->set($revision_default_key, $entity->isDefaultRevision());
     }
@@ -858,15 +861,19 @@ abstract class ContentEntityStorageBase extends EntityStorageBase implements Con
   protected function invokeStorageLoadHook(array &$entities) {
     if (!empty($entities)) {
       // Call hook_entity_storage_load().
-      foreach ($this->moduleHandler()->getImplementations('entity_storage_load') as $module) {
-        $function = $module . '_entity_storage_load';
-        $function($entities, $this->entityTypeId);
-      }
+      $this->moduleHandler()->invokeAllWith(
+        'entity_storage_load',
+        function (callable $hook, string $module) use (&$entities) {
+          $hook($entities, $this->entityTypeId);
+        }
+      );
       // Call hook_TYPE_storage_load().
-      foreach ($this->moduleHandler()->getImplementations($this->entityTypeId . '_storage_load') as $module) {
-        $function = $module . '_' . $this->entityTypeId . '_storage_load';
-        $function($entities);
-      }
+      $this->moduleHandler()->invokeAllWith(
+        $this->entityTypeId . '_storage_load',
+        function (callable $hook, string $module) use (&$entities) {
+          $hook($entities);
+        }
+      );
     }
   }
 
@@ -1103,9 +1110,14 @@ abstract class ContentEntityStorageBase extends EntityStorageBase implements Con
       $this->entityTypeId . '_values',
       'entity_field_info',
     ];
+    $items = [];
     foreach ($entities as $id => $entity) {
-      $this->cacheBackend->set($this->buildCacheId($id), $entity, CacheBackendInterface::CACHE_PERMANENT, $cache_tags);
+      $items[$this->buildCacheId($id)] = [
+        'data' => $entity,
+        'tags' => $cache_tags,
+      ];
     }
+    $this->cacheBackend->setMultiple($items);
   }
 
   /**

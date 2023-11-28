@@ -4,24 +4,24 @@
 * https://www.drupal.org/node/2815083
 * @preserve
 **/
-
-(function (Drupal, Modernizr) {
-  var isIE11 = Modernizr.mq('(-ms-high-contrast: active), (-ms-high-contrast: none)');
-
+(function (Drupal) {
+  var isIE11 = !!document.documentMode;
   if (isIE11) {
+    window.CKEditor5 = null;
     var quickEditLabelObserver = null;
     Drupal.editors.ckeditor5 = {
       attach: function attach(element) {
         var editorMessageContainer = document.createElement('div');
         element.parentNode.insertBefore(editorMessageContainer, element);
         var editorMessages = new Drupal.Message(editorMessageContainer);
-        editorMessages.add(Drupal.t('Internet Explorer 11 user: a rich text editor is available for this field when used with any other supported browser.'), {
+        editorMessages.add(Drupal.t('A rich text editor is available for this field when used with <a href="@supported-browsers">supported browsers</a> other than Internet Explorer.', {
+          '@supported-browsers': 'https://www.drupal.org/docs/system-requirements/browser-requirements'
+        }), {
           type: 'warning'
         });
       },
       detach: function detach() {
         var quickEditToolbar = document.querySelector('#quickedit-entity-toolbar .quickedit-toolbar');
-
         if (quickEditToolbar) {
           quickEditToolbar.classList.remove('ck5-ie11');
           quickEditToolbar.classList.add('icon-pencil');
@@ -33,7 +33,6 @@
         var quickEditToolbar = document.querySelector('#quickedit-entity-toolbar .quickedit-toolbar');
         var notEditableAlert = Drupal.t('Field Not Editable');
         var notEditableMessage = Drupal.t('CKEditor 5 is not compatible with IE11.');
-
         function quickEditLabelWarnIE11(toolbarLabel) {
           quickEditLabelObserver.disconnect();
           toolbarLabel.innerHTML = "<div><b>".concat(notEditableAlert, "</b><div>").concat(notEditableMessage, "</div></div>");
@@ -41,7 +40,6 @@
             childList: true
           });
         }
-
         if (quickEditToolbar) {
           quickEditToolbar.classList.add('ck5-ie11');
           quickEditToolbar.classList.remove('icon-pencil');
@@ -61,4 +59,4 @@
       }
     };
   }
-})(Drupal, Modernizr);
+})(Drupal);

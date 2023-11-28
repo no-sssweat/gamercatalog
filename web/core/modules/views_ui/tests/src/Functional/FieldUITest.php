@@ -16,7 +16,7 @@ class FieldUITest extends UITestBase {
   /**
    * {@inheritdoc}
    */
-  protected $defaultTheme = 'classy';
+  protected $defaultTheme = 'stark';
 
   /**
    * Views used by this test.
@@ -44,7 +44,7 @@ class FieldUITest extends UITestBase {
     // Ensure that the expected tokens appear in the UI.
     $edit_handler_url = 'admin/structure/views/nojs/handler/test_view/default/field/age';
     $this->drupalGet($edit_handler_url);
-    $xpath = '//details[@id="edit-options-alter-help"]/div[@class="details-wrapper"]/div[@class="item-list"]/ul/li';
+    $xpath = '//details[@id="edit-options-alter-help"]/ul/li';
     $this->assertSession()->elementTextEquals('xpath', $xpath, '{{ age }} == Age');
 
     $edit_handler_url = 'admin/structure/views/nojs/handler/test_view/default/field/id';
@@ -58,8 +58,7 @@ class FieldUITest extends UITestBase {
     $this->assertSession()->elementTextEquals('xpath', "{$xpath}[2]", '{{ id }} == ID');
     $this->assertSession()->elementTextEquals('xpath', "{$xpath}[3]", '{{ name }} == Name');
 
-    $result = $this->xpath('//details[@id="edit-options-more"]');
-    $this->assertEmpty($result, "Container 'more' is empty and should not be displayed.");
+    $this->assertSession()->elementNotExists('xpath', '//details[@id="edit-options-more"]');
 
     // Ensure that dialog titles are not escaped.
     $edit_groupby_url = 'admin/structure/views/nojs/handler/test_view/default/field/name';

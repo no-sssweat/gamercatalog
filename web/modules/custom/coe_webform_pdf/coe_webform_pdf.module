@@ -1,0 +1,105 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for coe_webform_pdf module.
+ *
+ * @DCG
+ * This file is no longer required in Drupal 8.
+ * @see https://www.drupal.org/node/2217931
+ */
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Serialization\Yaml;
+use Drupal\Core\Url;
+use Drupal\webform\WebformInterface;
+
+/**
+ * Implements hook_entity_operation().
+ *
+ * Adds a 'Download PDF' operation.
+ */
+function coe_webform_pdf_entity_operation(EntityInterface $entity) {
+  $operations = [];
+  $entity_type = $entity->getEntityType()->id();
+
+  if ($entity_type === 'webform_submission') {
+    $sid = $entity->id();
+    $route_name = 'entity_print.view';
+    $url = Url::fromRoute($route_name, [
+      'export_type' => 'pdf',
+      'entity_type' => $entity_type,
+      'entity_id' => $sid
+    ]);
+
+    $operations['download_pdf'] = [
+      'title' => t('Download PDF'),
+      'weight' => 100,
+      'url' => $url,
+    ];
+
+    return $operations;
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function coe_webform_pdf_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // Add submsion_pdf field to webform if it doesn't exist yet.
+  $form_ids = [
+    'webform_source_form',
+    'webform_edit_form',
+  ];
+  if (in_array($form_id, $form_ids)) {
+    $webform = $form_state->getFormObject()->getEntity();
+    // Could not do this in submit handler due to AJAX nor in hook_entity_insert().
+    coe_webform_pdf_add_submssion_pdf_field($webform);
+  }
+}
+
+/**
+ * Adds a submission_pdf field to the webform if it doesn't exist already.
+ *
+ * @return void
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function coe_webform_pdf_add_submssion_pdf_field(WebformInterface $webform) {
+  $webform_elements = $webform->get('elements');
+  $no_field_added_yet = strpos($webform_elements, "submission_pdf") === false;
+  if (!empty($webform_elements) && $no_field_added_yet) {
+    $elements = Yaml::decode($webform_elements);
+    // add a field
+    $elements['submission_pdf'] = [
+      '#type' => 'webform_entity_print_attachment:pdf',
+      '#title' => 'Submission PDF',
+      '#filename' => '[webform:title]-submission-[webform_submission:sid].pdf',
+    ];
+
+    $webform->set('elements', Yaml::encode($elements));
+    $webform->save();
+  }
+}
+
+/**
+ * Batch process callback to process each webform.
+ */
+function coe_webform_pdf_process_webform_install($webform, &$context) {
+  coe_webform_pdf_add_submssion_pdf_field($webform);
+}
+
+/**
+ * Batch process callback to run after processing all webforms.
+ */
+function coe_webform_pdf_batch_finished($success, $results, $operations) {
+  if ($success) {
+    // The batch process was successful.
+    \Drupal::messenger()->addMessage(t('Webform processing completed successfully.'));
+  }
+  else {
+    // The batch process encountered an error.
+    \Drupal::messenger()->addError(t('Webform processing encountered an error.'));
+  }
+}

@@ -24,6 +24,8 @@ use GuzzleHttp\RequestOptions;
 use Psr\Http\Message\ResponseInterface;
 
 /**
+ * Defines a base class for testing all entity resources.
+ *
  * Even though there is the generic EntityResource, it's necessary for every
  * entity type to have its own test, because they each have different fields,
  * validation constraints, et cetera. It's not because the generic case works,
@@ -41,11 +43,6 @@ use Psr\Http\Message\ResponseInterface;
  * - \Drupal\Tests\rest\Functional\EntityResource\Node\NodeJsonAnonTest
  * - \Drupal\Tests\rest\Functional\EntityResource\Node\NodeJsonBasicAuthTest
  * - \Drupal\Tests\rest\Functional\EntityResource\Node\NodeJsonCookieTest
- * But the HAL module also adds a new format ('hal_json'), so that format also
- * needs test coverage (for its own peculiarities in normalization & encoding):
- * - \Drupal\Tests\hal\Functional\EntityResource\Node\NodeHalJsonAnonTest
- * - \Drupal\Tests\hal\Functional\EntityResource\Node\NodeHalJsonBasicAuthTest
- * - \Drupal\Tests\hal\Functional\EntityResource\Node\NodeHalJsonCookieTest
  *
  * In other words: for every entity type there should be:
  * 1. an abstract subclass that includes the entity type-specific authorization
@@ -90,16 +87,18 @@ abstract class EntityResourceTestBase extends ResourceTestBase {
   protected static $patchProtectedFieldNames;
 
   /**
-   * The fields that need a different (random) value for each new entity created
-   * by a POST request.
+   * A list of fields that need a unique value.
+   *
+   * This is for each new each entity created by a POST request.
    *
    * @var string[]
    */
   protected static $uniqueFieldNames = [];
 
   /**
-   * Optionally specify which field is the 'label' field. Some entities do not
-   * specify a 'label' entity key. For example: User.
+   * Optionally specify which field is the 'label' field.
+   *
+   * Some entities do not specify a 'label' entity key. For example: User.
    *
    * @see ::getInvalidNormalizedEntityToCreate
    *
@@ -524,19 +523,18 @@ abstract class EntityResourceTestBase extends ResourceTestBase {
     // @see \Drupal\rest\EventSubscriber\ResourceResponseSubscriber::flattenResponse()
     $cache_items = $this->container->get('database')
       ->select('cache_dynamic_page_cache', 'c')
-      ->fields('c', ['cid', 'data'])
+      ->fields('c', ['data'])
       ->condition('c.cid', '%[route]=rest.%', 'LIKE')
       ->execute()
-      ->fetchAllAssoc('cid');
+      ->fetchAll();
     if (!$is_cacheable_by_dynamic_page_cache) {
       $this->assertCount(0, $cache_items);
     }
     else {
-      $this->assertCount(2, $cache_items);
-      $found_cache_redirect = FALSE;
+      $this->assertLessThanOrEqual(2, count($cache_items));
       $found_cached_200_response = FALSE;
       $other_cached_responses_are_4xx = TRUE;
-      foreach ($cache_items as $cid => $cache_item) {
+      foreach ($cache_items as $cache_item) {
         $cached_data = unserialize($cache_item->data);
         if (!isset($cached_data['#cache_redirect'])) {
           $cached_response = $cached_data['#response'];
@@ -549,11 +547,7 @@ abstract class EntityResourceTestBase extends ResourceTestBase {
           $this->assertNotInstanceOf(ResourceResponseInterface::class, $cached_response);
           $this->assertInstanceOf(CacheableResponseInterface::class, $cached_response);
         }
-        else {
-          $found_cache_redirect = TRUE;
-        }
       }
-      $this->assertTrue($found_cache_redirect);
       $this->assertTrue($found_cached_200_response);
       $this->assertTrue($other_cached_responses_are_4xx);
     }
@@ -691,8 +685,7 @@ abstract class EntityResourceTestBase extends ResourceTestBase {
   public function testPost() {
     // @todo Remove this in https://www.drupal.org/node/2300677.
     if ($this->entity instanceof ConfigEntityInterface) {
-      $this->assertTrue(TRUE, 'POSTing config entities is not yet supported.');
-      return;
+      $this->markTestSkipped('POSTing config entities is not yet supported.');
     }
 
     $this->initAuthentication();
@@ -866,8 +859,7 @@ abstract class EntityResourceTestBase extends ResourceTestBase {
   public function testPatch() {
     // @todo Remove this in https://www.drupal.org/node/2300677.
     if ($this->entity instanceof ConfigEntityInterface) {
-      $this->assertTrue(TRUE, 'PATCHing config entities is not yet supported.');
-      return;
+      $this->markTestSkipped('PATCHing config entities is not yet supported.');
     }
 
     // Patch testing requires that another entity of the same type exists.
@@ -1105,8 +1097,7 @@ abstract class EntityResourceTestBase extends ResourceTestBase {
   public function testDelete() {
     // @todo Remove this in https://www.drupal.org/node/2300677.
     if ($this->entity instanceof ConfigEntityInterface) {
-      $this->assertTrue(TRUE, 'DELETEing config entities is not yet supported.');
-      return;
+      $this->markTestSkipped('DELETEing config entities is not yet supported.');
     }
 
     $this->initAuthentication();

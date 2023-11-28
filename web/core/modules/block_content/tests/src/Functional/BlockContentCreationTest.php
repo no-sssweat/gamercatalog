@@ -25,7 +25,7 @@ class BlockContentCreationTest extends BlockContentTestBase {
   /**
    * {@inheritdoc}
    */
-  protected $defaultTheme = 'classy';
+  protected $defaultTheme = 'stark';
 
   /**
    * Permissions to grant admin user.
@@ -172,7 +172,7 @@ class BlockContentCreationTest extends BlockContentTestBase {
     $edit = [];
     $edit['info[0][value]'] = $this->randomMachineName(8);
     $edit['body[0][value]'] = $this->randomMachineName(16);
-    // Don't pass the custom block type in the url so the default is forced.
+    // Don't pass the custom block type in the URL so the default is forced.
     $this->drupalGet('block/add');
     $this->submitForm($edit, 'Save');
 

@@ -84,7 +84,7 @@ const RESPONSIVE_PRIORITY_LOW = 'priority-low';
  *   ArrayObject which allows it to be accessed with array syntax and isset(),
  *   and should be more lightweight than the full registry. Defaults to TRUE.
  *
- * @return
+ * @return array|\Drupal\Core\Utility\ThemeRegistry
  *   The complete theme registry array, or an instance of the
  *   Drupal\Core\Utility\ThemeRegistry class.
  */
@@ -125,6 +125,9 @@ function drupal_theme_rebuild() {
 
 /**
  * Allows themes and/or theme engines to discover overridden theme functions.
+ *
+ * @internal only exists to support discovery of deprecated theme functions,
+ *   will be removed in Drupal 10.0.0.
  *
  * @param array $cache
  *   The existing cache of theme hooks to test against.
@@ -304,7 +307,7 @@ function drupal_find_theme_templates($cache, $extension, $path) {
  * @param $theme
  *   The name of a given theme; defaults to the current theme.
  *
- * @return
+ * @return mixed
  *   The value of the requested setting, NULL if the setting does not exist.
  */
 function theme_get_setting($setting_name, $theme = NULL) {
@@ -473,7 +476,7 @@ function theme_render_and_autoescape($arg) {
  * @param \Drupal\Core\Config\Config $config
  *   The configuration object to update.
  *
- * @return
+ * @return \Drupal\Core\Config\Config
  *   The Config object with updated data.
  */
 function theme_settings_convert_to_config(array $theme_settings, Config $config) {
@@ -1433,7 +1436,7 @@ function template_preprocess_page(&$variables) {
     $variables['db_is_active'] = FALSE;
   }
 
-  if ($node = \Drupal::routeMatch()->getParameter('node')) {
+  if (($node = \Drupal::routeMatch()->getParameter('node')) || ($node = \Drupal::routeMatch()->getParameter('node_preview'))) {
     $variables['node'] = $node;
   }
 }
@@ -1456,7 +1459,7 @@ function template_preprocess_page(&$variables) {
  *   of '__' is appropriate for theme hook suggestions. '-' is appropriate for
  *   extra classes.
  *
- * @return
+ * @return array
  *   An array of suggestions, suitable for adding to
  *   hook_theme_suggestions_HOOK_alter() or to $variables['attributes']['class']
  *   if the suggestions represent extra CSS classes.

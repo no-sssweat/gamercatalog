@@ -98,33 +98,66 @@ class LoggerChannelTest extends UnitTestCase {
   }
 
   /**
+   * Tests that $context['ip'] is a string even when the request's IP is NULL.
+   */
+  public function testNullIp(): void {
+    // Create a logger that will fail if $context['ip'] is not an empty string.
+    $logger = $this->createMock(LoggerInterface::class);
+    $expected = function ($context) {
+      return $context['channel'] == 'test' && $context['ip'] === '';
+    };
+    $logger->expects($this->once())
+      ->method('log')
+      ->with($this->anything(), 'Test message', $this->callback($expected));
+
+    // Set up a request stack that has a request that will return NULL when
+    // ::getClientIp() is called.
+    $requestStack = new RequestStack();
+    $request_mock = $this->getMockBuilder(Request::class)
+      ->onlyMethods(['getClientIp'])
+      ->getMock();
+    $request_mock->expects($this->any())
+      ->method('getClientIp')
+      ->willReturn(NULL);
+    $requestStack->push($request_mock);
+
+    // Set up the logger channel for testing.
+    $channel = new LoggerChannel('test');
+    $channel->addLogger($logger);
+    $channel->setRequestStack($requestStack);
+
+    // Perform the test.
+    $channel->log(rand(0, 7), 'Test message');
+  }
+
+  /**
    * Data provider for self::testLog().
    */
   public function providerTestLog() {
     $account_mock = $this->createMock('Drupal\Core\Session\AccountInterface');
     $account_mock->expects($this->any())
       ->method('id')
-      ->will($this->returnValue(1));
+      ->willReturn(1);
 
     $request_mock = $this->getMockBuilder('Symfony\Component\HttpFoundation\Request')
       ->onlyMethods(['getClientIp'])
       ->getMock();
     $request_mock->expects($this->any())
       ->method('getClientIp')
-      ->will($this->returnValue('127.0.0.1'));
+      ->willReturn('127.0.0.1');
     $request_mock->headers = $this->createMock('Symfony\Component\HttpFoundation\ParameterBag');
 
     // No request or account.
     $cases[] = [
       function ($context) {
-        return $context['channel'] == 'test' && empty($context['uid']) && empty($context['ip']);
+        return $context['channel'] == 'test' && empty($context['uid']) && $context['ip'] === '';
       },
     ];
     // With account but not request. Since the request is not available the
     // current user should not be used.
     $cases[] = [
       function ($context) {
-        return $context['uid'] === 0 && empty($context['ip']);
+        return $context['uid'] === 0 && $context['ip'] === '';
       },
       NULL,
       $account_mock,

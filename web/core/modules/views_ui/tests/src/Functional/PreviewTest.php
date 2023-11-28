@@ -14,12 +14,18 @@ class PreviewTest extends UITestBase {
    *
    * @var array
    */
-  public static $testViews = ['test_preview', 'test_preview_error', 'test_pager_full', 'test_mini_pager', 'test_click_sort'];
+  public static $testViews = [
+    'test_preview',
+    'test_preview_error',
+    'test_pager_full',
+    'test_mini_pager',
+    'test_click_sort',
+  ];
 
   /**
    * {@inheritdoc}
    */
-  protected $defaultTheme = 'classy';
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests contextual links in the preview form.
@@ -33,9 +39,21 @@ class PreviewTest extends UITestBase {
     $this->submitForm($edit = [], 'Update preview');
 
     // Verify that the contextual link to add a new field is shown.
-    $this->assertSession()->elementsCount('xpath', '//div[@id="views-live-preview"]//ul[contains(@class, "contextual-links")]/li[contains(@class, "filter-add")]', 1);
+    $selector = $this->assertSession()->buildXPathQuery('//div[@id="views-live-preview"]//ul[contains(@class, :ul-class)]/li/a[contains(@href, :href)]', [
+      ':ul-class' => 'contextual-links',
+      ':href' => '/admin/structure/views/nojs/add-handler/test_preview/default/filter',
+    ]);
+    $this->assertSession()->elementsCount('xpath', $selector, 1);
 
-    $this->submitForm($edit = ['view_args' => '100'], 'Update preview');
+    $this->submitForm(['view_args' => '100'], 'Update preview');
+
+    // Test that area text and exposed filters are present and rendered.
+    $this->assertSession()->fieldExists('id');
+    $this->assertSession()->pageTextContains('Test header text');
+    $this->assertSession()->pageTextContains('Test footer text');
+    $this->assertSession()->pageTextContains('Test empty text');
+
+    $this->submitForm(['view_args' => '0'], 'Update preview');
 
     // Test that area text and exposed filters are present and rendered.
     $this->assertSession()->fieldExists('id');
@@ -53,15 +71,16 @@ class PreviewTest extends UITestBase {
 
     $this->submitForm($edit = [], 'Update preview');
 
-    $this->assertSession()->elementsCount('xpath', '//div[@class = "view-content"]/div[contains(@class, views-row)]', 5);
+    $selector = '//div[@class = "views-row"]';
+    $this->assertSession()->elementsCount('xpath', $selector, 5);
 
     // Filter just the first result.
     $this->submitForm($edit = ['view_args' => '1'], 'Update preview');
-    $this->assertSession()->elementsCount('xpath', '//div[@class = "view-content"]/div[contains(@class, views-row)]', 1);
+    $this->assertSession()->elementsCount('xpath', $selector, 1);
 
     // Filter for no results.
     $this->submitForm($edit = ['view_args' => '100'], 'Update preview');
-    $this->assertSession()->elementNotExists('xpath', '//div[@class = "view-content"]/div[contains(@class, views-row)]');
+    $this->assertSession()->elementNotExists('xpath', $selector);
 
     // Test that area text and exposed filters are present and rendered.
     $this->assertSession()->fieldExists('id');
@@ -111,12 +130,12 @@ SQL;
     $this->assertSession()->assertEscaped($query_string);
 
     // Test that the statistics and query are rendered above the preview.
-    $this->assertLessThan(strpos($this->getSession()->getPage()->getContent(), 'view-test-preview'), strpos($this->getSession()->getPage()->getContent(), 'views-query-info'));
+    $this->assertLessThan(strpos($this->getSession()->getPage()->getContent(), 'js-view-dom-id'), strpos($this->getSession()->getPage()->getContent(), 'views-query-info'));
 
     // Test that statistics and query rendered below the preview.
     $settings->set('ui.show.sql_query.where', 'below')->save();
     $this->submitForm($edit = ['view_args' => '100'], 'Update preview');
-    $this->assertLessThan(strpos($this->getSession()->getPage()->getContent(), 'views-query-info'), strpos($this->getSession()->getPage()->getContent(), 'view-test-preview'), 'Statistics shown below the preview.');
+    $this->assertLessThan(strpos($this->getSession()->getPage()->getContent(), 'views-query-info'), strpos($this->getSession()->getPage()->getContent(), 'js-view-dom-id'), 'Statistics shown below the preview.');
 
     // Test that the preview title isn't double escaped.
     $this->drupalGet("admin/structure/views/nojs/display/test_preview/default/title");
@@ -156,6 +175,30 @@ SQL;
     $this->submitForm($edit = [], 'Update preview');
 
     $this->assertSession()->pageTextContains('Unable to preview due to validation errors.');
+  }
+
+  /**
+   * Tests HTML is filtered from the view title when previewing.
+   */
+  public function testPreviewTitle() {
+    // Update the view and change title with html tags.
+    \Drupal::configFactory()->getEditable('views.view.test_preview')
+      ->set('display.default.display_options.title', '<strong>Test preview title</strong>')
+      ->save();
+
+    $this->drupalGet('admin/structure/views/view/test_preview/edit');
+    $this->assertSession()->statusCodeEquals(200);
+    $this->submitForm([], 'Update preview');
+    $this->assertSession()->pageTextContains('Test preview title');
+    // Ensure allowed HTML tags are still displayed.
+    $this->assertCount(2, $this->xpath('//div[@id="views-live-preview"]//strong[text()=:text]', [':text' => 'Test preview title']));
+
+    // Ensure other tags are filtered.
+    \Drupal::configFactory()->getEditable('views.view.test_preview')
+      ->set('display.default.display_options.title', '<b>Test preview title</b>')
+      ->save();
+    $this->submitForm([], 'Update preview');
+    $this->assertCount(0, $this->xpath('//div[@id="views-live-preview"]//b[text()=:text]', [':text' => 'Test preview title']));
   }
 
 }

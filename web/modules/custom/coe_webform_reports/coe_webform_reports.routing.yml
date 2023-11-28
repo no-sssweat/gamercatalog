@@ -1,0 +1,7 @@
+coe_webform_reports.page:
+  path: '/admin/reports-page'
+  defaults:
+    _controller: '\Drupal\coe_webform_reports\Controller\ReportsPage::content'
+    _title: 'Submission Reports Page'
+  requirements:
+    _permission: 'access content'

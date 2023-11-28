@@ -1,0 +1,11 @@
+google_api_client.google_api_services:
+  type: config_object
+  mapping:
+    name:
+      type: string
+      label: 'Name'
+    label:
+      type: label
+      label: 'Label'
+    google_api_client_google_api_services:
+      type: ignore

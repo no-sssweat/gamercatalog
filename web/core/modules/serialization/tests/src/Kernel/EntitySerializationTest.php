@@ -70,6 +70,9 @@ class EntitySerializationTest extends NormalizerTestBase {
    */
   protected $entityClass = 'Drupal\entity_test\Entity\EntityTest';
 
+  /**
+   * {@inheritdoc}
+   */
   protected function setUp(): void {
     parent::setUp();
 
@@ -187,8 +190,9 @@ class EntitySerializationTest extends NormalizerTestBase {
   }
 
   /**
-   * Tests user normalization, using the entity_serialization_test module to
-   * override some default access controls.
+   * Tests user normalization with some default access controls overridden.
+   *
+   * @see entity_serialization_test.module
    */
   public function testUserNormalize() {
     // Test password isn't available.
@@ -207,7 +211,7 @@ class EntitySerializationTest extends NormalizerTestBase {
   }
 
   /**
-   * Tests registered Serializer's entity serialization for core's formats.
+   * Tests entity serialization for core's formats by a registered Serializer.
    */
   public function testSerialize() {
     // Test that Serializer responds using the ComplexDataNormalizer and
@@ -324,7 +328,7 @@ class EntitySerializationTest extends NormalizerTestBase {
     $this->serializer->denormalize([
       'serialized_long' => [
         [
-         'value' => 'boo',
+          'value' => 'boo',
         ],
       ],
       'type' => 'entity_test_serialized_field',

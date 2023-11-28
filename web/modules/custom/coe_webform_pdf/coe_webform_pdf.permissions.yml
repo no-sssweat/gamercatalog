@@ -1,0 +1,4 @@
+administer coe_webform_pdf configuration:
+  title: 'Administer coe_webform_pdf configuration'
+  description: 'Optional description.'
+  restrict access: true

@@ -8,7 +8,7 @@
 
         // Extract the form_id attribute
         var formId = formElement ? formElement.attr('id') : 'unknown';
-        alert(formId);
+        // alert(formId);
 
         // Send the custom GA4 event with the form_id parameter
         gtag('event', 'webform_view', {

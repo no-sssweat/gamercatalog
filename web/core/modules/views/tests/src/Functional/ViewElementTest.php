@@ -21,13 +21,13 @@ class ViewElementTest extends ViewTestBase {
   /**
    * {@inheritdoc}
    */
-  protected $defaultTheme = 'classy';
+  protected $defaultTheme = 'starterkit_theme';
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE): void {
-    parent::setUp($import_test_views);
+  protected function setUp($import_test_views = TRUE, $modules = ['views_test_config']): void {
+    parent::setUp($import_test_views, $modules);
 
     $this->enableViewsTestModule();
   }
@@ -73,8 +73,7 @@ class ViewElementTest extends ViewTestBase {
   }
 
   /**
-   * Tests the rendered output and form output of a view element, using the
-   * embed display plugin.
+   * Tests the rendered output and form output of the "embed" display plugin.
    */
   public function testViewElementEmbed() {
     $view = Views::getView('test_view_embed');

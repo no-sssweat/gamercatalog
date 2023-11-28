@@ -221,6 +221,8 @@ abstract class ResourceTestBase extends BrowserTestBase {
 
     $this->serializer = $this->container->get('jsonapi.serializer');
 
+    $this->config('system.logging')->set('error_level', ERROR_REPORTING_HIDE)->save();
+
     // Ensure the anonymous user role has no permissions at all.
     $user_role = Role::load(RoleInterface::ANONYMOUS_ID);
     foreach ($user_role->getPermissions() as $permission) {
@@ -607,21 +609,14 @@ abstract class ResourceTestBase extends BrowserTestBase {
   /**
    * Sets up the necessary authorization.
    *
-   * In case of a test verifying publicly accessible REST resources: grant
-   * permissions to the anonymous user role.
-   *
-   * In case of a test verifying behavior when using a particular authentication
-   * provider: create a user with a particular set of permissions.
-   *
    * Because of the $method parameter, it's possible to first set up
-   * authentication for only GET, then add POST, et cetera. This then also
+   * authorization for only GET, then add POST, et cetera. This then also
    * allows for verifying a 403 in case of missing authorization.
    *
    * @param string $method
-   *   The HTTP method for which to set up authentication.
+   *   The HTTP method for which to set up authorization.
    *
-   * @see ::grantPermissionsToAnonymousRole()
-   * @see ::grantPermissionsToAuthenticatedRole()
+   * @see ::grantPermissionsToTestedRole()
    */
   abstract protected function setUpAuthorization($method);
 
@@ -732,7 +727,14 @@ abstract class ResourceTestBase extends BrowserTestBase {
     // Expected cache tags: X-Drupal-Cache-Tags header.
     $this->assertSame($expected_cache_tags !== FALSE, $response->hasHeader('X-Drupal-Cache-Tags'));
     if (is_array($expected_cache_tags)) {
-      $this->assertEqualsCanonicalizing($expected_cache_tags, explode(' ', $response->getHeader('X-Drupal-Cache-Tags')[0]));
+      $actual_cache_tags = explode(' ', $response->getHeader('X-Drupal-Cache-Tags')[0]);
+
+      $tag = 'config:system.logging';
+      if (!in_array($tag, $expected_cache_tags) && in_array($tag, $actual_cache_tags)) {
+        $expected_cache_tags[] = $tag;
+      }
+
+      $this->assertEqualsCanonicalizing($expected_cache_tags, $actual_cache_tags);
     }
 
     // Expected cache contexts: X-Drupal-Cache-Contexts header.
@@ -1963,8 +1965,7 @@ abstract class ResourceTestBase extends BrowserTestBase {
   public function testPostIndividual() {
     // @todo Remove this in https://www.drupal.org/node/2300677.
     if ($this->entity instanceof ConfigEntityInterface) {
-      $this->assertTrue(TRUE, 'POSTing config entities is not yet supported.');
-      return;
+      $this->markTestSkipped('POSTing config entities is not yet supported.');
     }
 
     // Try with all of the following request bodies.
@@ -2179,8 +2180,7 @@ abstract class ResourceTestBase extends BrowserTestBase {
   public function testPatchIndividual() {
     // @todo Remove this in https://www.drupal.org/node/2300677.
     if ($this->entity instanceof ConfigEntityInterface) {
-      $this->assertTrue(TRUE, 'PATCHing config entities is not yet supported.');
-      return;
+      $this->markTestSkipped('PATCHing config entities is not yet supported.');
     }
 
     $prior_revision_id = (int) $this->entityLoadUnchanged($this->entity->id())->getRevisionId();
@@ -2497,8 +2497,7 @@ abstract class ResourceTestBase extends BrowserTestBase {
   public function testDeleteIndividual() {
     // @todo Remove this in https://www.drupal.org/node/2300677.
     if ($this->entity instanceof ConfigEntityInterface) {
-      $this->assertTrue(TRUE, 'DELETEing config entities is not yet supported.');
-      return;
+      $this->markTestSkipped('DELETEing config entities is not yet supported.');
     }
 
     // The URL and Guzzle request options that will be used in this test. The
@@ -2778,28 +2777,6 @@ abstract class ResourceTestBase extends BrowserTestBase {
     }
     assert($this->entity instanceof RevisionableInterface);
 
-    // JSON:API will only support node and media revisions until Drupal core has
-    // a generic revision access API.
-    if (!static::$resourceTypeIsVersionable) {
-      $this->setUpRevisionAuthorization('GET');
-      $url = Url::fromRoute(sprintf('jsonapi.%s.individual', static::$resourceTypeName), ['entity' => $this->entity->uuid()])->setAbsolute();
-      $url->setOption('query', ['resourceVersion' => 'id:' . $this->entity->getRevisionId()]);
-      $request_options = [];
-      $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
-      $request_options = NestedArray::mergeDeep($request_options, $this->getAuthenticationRequestOptions());
-      $response = $this->request('GET', $url, $request_options);
-      $detail = 'JSON:API does not yet support resource versioning for this resource type.';
-      $detail .= ' For context, see https://www.drupal.org/project/drupal/issues/2992833#comment-12818258.';
-      $detail .= ' To contribute, see https://www.drupal.org/project/drupal/issues/2350939 and https://www.drupal.org/project/drupal/issues/2809177.';
-      $expected_cache_contexts = [
-        'url.path',
-        'url.query_args:resourceVersion',
-        'url.site',
-      ];
-      $this->assertResourceErrorResponse(501, $detail, $url, $response, FALSE, ['http_response'], $expected_cache_contexts);
-      return;
-    }
-
     // Add a field to modify in order to test revisions.
     FieldStorageConfig::create([
       'entity_type' => static::$entityTypeId,
@@ -2959,6 +2936,10 @@ abstract class ResourceTestBase extends BrowserTestBase {
 
     // Install content_moderation module.
     $this->assertTrue($this->container->get('module_installer')->install(['content_moderation'], TRUE), 'Installed modules.');
+
+    if (!\Drupal::service('content_moderation.moderation_information')->canModerateEntitiesOfEntityType($this->entity->getEntityType())) {
+      return;
+    }
 
     // Set up an editorial workflow.
     $workflow = $this->createEditorialWorkflow();

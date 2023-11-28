@@ -1,0 +1,7 @@
+coe_webform_purge.settings_form:
+  path: '/admin/structure/webform/manage/{webform}/purge'
+  defaults:
+    _title: 'Purge settings'
+    _form: 'Drupal\coe_webform_purge\Form\SettingsForm'
+  requirements:
+    _permission: 'administer purge configuration'

@@ -53,6 +53,9 @@ class EntityFieldTest extends EntityKernelTestBase {
    */
   protected $entityFieldText;
 
+  /**
+   * {@inheritdoc}
+   */
   protected function setUp(): void {
     parent::setUp();
 
@@ -64,7 +67,7 @@ class EntityFieldTest extends EntityKernelTestBase {
     }
 
     // Create the test field.
-    module_load_install('entity_test');
+    $this->container->get('module_handler')->loadInclude('entity_test', 'install');
     entity_test_install();
 
     // Install required default configuration for filter module.
@@ -590,8 +593,7 @@ class EntityFieldTest extends EntityKernelTestBase {
   }
 
   /**
-   * Recursive helper for getting all contained strings,
-   * i.e. properties of type string.
+   * Gets all contained strings recursively.
    */
   public function getContainedStrings(TypedDataInterface $wrapper, $depth, array &$strings) {
 

@@ -1,0 +1,101 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for coe_webform_purge module.
+ *
+ * @DCG
+ * This file is no longer required in Drupal 8.
+ * @see https://www.drupal.org/node/2217931
+ */
+
+use Drupal\webform\Entity\Webform;
+use Drupal\webform\Entity\WebformSubmission;
+use Drupal\webform\WebformSubmissionInterface;
+
+/**
+ * Implements hook_ENTITY_insert().
+ */
+function coe_webform_purge_webform_submission_insert(WebformSubmissionInterface $webform_submission) {
+  coe_webform_submission_add_to_cleaner_queue($webform_submission);
+}
+
+/*
+ * Adds submission to Queue for deletion
+ */
+function coe_webform_submission_add_to_cleaner_queue(WebformSubmissionInterface $webform_submission) {
+  $wsid = $webform_submission->id();
+  // Create object to store info
+  $item = new \stdClass();
+  $item->id = $wsid;
+  $item->created = $webform_submission->created->value;
+  $item->webform_id = $webform_submission->getWebform()->id();
+  // Add to queue
+  $queue_factory = \Drupal::service('queue');
+  $queue = $queue_factory->get('webform_submission_cleaner');
+  $queue->createItem($item);
+}
+
+/**
+ * Batch operation to load webform submissions.
+ */
+function custom_module_load_webform_submissions($webform_id, &$context) {
+  $context['results']['skip_message'] = FALSE;
+  $context['results']['additional_value'] = 'This is an additional value.';
+  // Initialize context if not set.
+  if (empty($context['sandbox'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['current_submissions'] = 0;
+    $context['sandbox']['max'] = 0;
+  }
+
+  // Load webform submissions based on the webform ID.
+  $query = \Drupal::entityQuery('webform_submission')
+    ->condition('webform_id', $webform_id);
+  $submission_ids = $query->execute();
+
+  // If no submissions found, return.
+  if (empty($submission_ids)) {
+    $context['results']['skip_message'] = TRUE;
+    return;
+  }
+
+  $context['sandbox']['max'] = count($submission_ids);
+
+  foreach ($submission_ids as $submission_id) {
+    // Load each webform submission.
+    $webform_submission = WebformSubmission::load($submission_id);
+    // Add to deletion queue.
+    coe_webform_submission_add_to_cleaner_queue($webform_submission);
+
+    $context['sandbox']['current_submissions']++;
+    $context['sandbox']['progress'] = $context['sandbox']['current_submissions'] / $context['sandbox']['max'];
+
+    // Update the batch progress.
+    $context['message'] = t('Processing submission @current out of @total.', array(
+      '@current' => $context['sandbox']['current_submissions'],
+      '@total' => $context['sandbox']['max'],
+    ));
+  }
+  // Get Webform Name
+  $webform = Webform::load($webform_id);
+  $context['results']['title'] = $webform->label();
+}
+
+/**
+ * Batch finished callback.
+ */
+function custom_module_batch_finished($success, $results, $operations) {
+  if ($results['skip_message']) {
+    // Don't show any message
+  } elseif ($success) {
+    \Drupal::messenger()->addMessage(t('Scheduled all existing submissions of @title for deletion.', [
+      '@title' => $results['title'],
+    ]));
+  }
+  else {
+    \Drupal::messenger()->addError(t('Something when wrong when scheduling existing submission of @title for deletion.', [
+      '@title' => $results['title'],
+    ]));
+  }
+}

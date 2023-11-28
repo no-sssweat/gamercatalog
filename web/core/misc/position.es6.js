@@ -7,9 +7,8 @@
  * provided by jQuery UI position, but refactored to meet Drupal coding
  * standards, and restructured so it extends jQuery core instead of jQuery UI.
  *
- * For most positioning needs, the core/popperjs library should be used instead
- * of the functionality provided here. This is provided to support pre-existing
- * code that expects the jQuery position API.
+ * This is provided to support pre-existing code that expects the jQuery
+ * position API.
  *
  * @see https://github.com/jquery/jquery-ui/blob/1.12.1/LICENSE.txt
  * @see https://raw.githubusercontent.com/jquery/jquery-ui/1.12.1/ui/position.js
@@ -434,7 +433,11 @@
     const collision = (options.collision || 'flip').split(' ');
     const offsets = {};
 
-    const target = $(options.of);
+    // Make sure string options are treated as CSS selectors
+    const target =
+      typeof options.of === 'string'
+        ? $(document).find(options.of)
+        : $(options.of);
     const dimensions = getDimensions(target);
     const targetWidth = dimensions.width;
     const targetHeight = dimensions.height;

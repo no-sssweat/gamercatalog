@@ -1,0 +1,4 @@
+administer coe_webform_purge configuration:
+  title: 'Administer purge configuration'
+  description: ''
+  restrict access: true

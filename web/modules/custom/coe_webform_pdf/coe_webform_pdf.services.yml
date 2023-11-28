@@ -1,0 +1,5 @@
+services:
+  webform.handler.list_builder.submission:
+    class: 'Drupal\coe_webform_pdf\Plugin\WebformHandler\CustomWebformSubmissionListBuilder'
+    tags:
+      - { name: webform_submission_list_builder, priority: 200 }
