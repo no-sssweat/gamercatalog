@@ -1,0 +1,7 @@
+uuid: 0bfd6c6b-0b48-45e5-b18b-eff34496036e
+langcode: en
+status: false
+dependencies: {  }
+formId: node_crypto_live_form
+captchaType: default
+label: node_crypto_live_form

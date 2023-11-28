@@ -1,0 +1,3 @@
+purging_enabled: 1
+frequency_number: '5'
+frequency_type: seconds

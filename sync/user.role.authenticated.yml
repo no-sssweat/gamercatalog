@@ -6,6 +6,7 @@ dependencies:
     - filter.format.basic_html
   module:
     - comment
+    - devel
     - filter
     - search
     - shortcut
@@ -19,6 +20,7 @@ is_admin: false
 permissions:
   - 'access comments'
   - 'access content'
+  - 'access devel information'
   - 'access shortcuts'
   - 'post comments'
   - 'search content'
