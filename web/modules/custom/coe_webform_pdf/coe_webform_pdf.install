@@ -6,7 +6,7 @@
 function coe_webform_pdf_install() {
   // Define the batch process.
   $batch = [
-    'title' => t('Processing webforms'),
+    'title' => t('Processing Webforms'),
     'operations' => [],
     'finished' => 'coe_webform_pdf_batch_finished',
   ];
@@ -18,7 +18,7 @@ function coe_webform_pdf_install() {
 
   foreach ($webforms as $webform) {
     $batch['operations'][] = [
-      'coe_webform_pdf_process_webform_install',
+      'coe_webform_pdf_process_webform_install_batch',
       [$webform],
     ];
   }

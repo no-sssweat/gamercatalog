@@ -5,10 +5,8 @@
       $(document, context).once('customGA4Event').each(function () {
         // Find the form element in the HTML by its ID
         var formElement = $('.webform-submission-form', context);
-
         // Extract the form_id attribute
-        var formId = formElement ? formElement.attr('id') : 'unknown';
-        // alert(formId);
+        var formId = formElement.attr('data-webform-id');
 
         // Send the custom GA4 event with the form_id parameter
         gtag('event', 'webform_view', {

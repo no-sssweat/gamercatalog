@@ -8,19 +8,16 @@ use Drupal\Core\Form\FormStateInterface;
 /**
  * Configure coe_webform_purge settings for this site.
  */
-class SettingsForm extends ConfigFormBase
-{
+class SettingsForm extends ConfigFormBase {
 
   /**
    * {@inheritdoc}
    */
-  public function getFormId()
-  {
+  public function getFormId() {
     return 'coe_webform_purge_settings';
   }
 
-  public function getWebformConfigName()
-  {
+  public function getWebformConfigName() {
     $route_match = \Drupal::routeMatch();
     return 'coe_webform_purge.' . $route_match->getParameter('webform');
   }
@@ -28,8 +25,7 @@ class SettingsForm extends ConfigFormBase
   /**
    * {@inheritdoc}
    */
-  protected function getEditableConfigNames()
-  {
+  protected function getEditableConfigNames() {
     $webform_config_name = $this->getWebformConfigName();
     return [$webform_config_name];
   }
@@ -37,8 +33,7 @@ class SettingsForm extends ConfigFormBase
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state)
-  {
+  public function buildForm(array $form, FormStateInterface $form_state) {
     $webform_config_name = $this->getWebformConfigName();
     $config = $this->config($webform_config_name);
 
@@ -62,10 +57,10 @@ class SettingsForm extends ConfigFormBase
       '#type' => 'number',
       '#title' => $this->t('Number'),
       '#default_value' => $config->get('frequency_number'),
-      '#min' => 1,  // Set the minimum value to 1.
+      '#min' => 1,
       '#ajax' => [
         'callback' => [$this, 'updateTypePlural'],
-        'wrapper' => 'type-wrapper', // This element is updated with this AJAX callback.
+        'wrapper' => 'type-wrapper',
         'event' => 'change',
       ],
       '#required' => [
@@ -100,7 +95,7 @@ class SettingsForm extends ConfigFormBase
       ];
     }
     // Don't use field set parent on $form_state
-    $form['#tree'] = false;
+    $form['#tree'] = FALSE;
 
     return parent::buildForm($form, $form_state);
   }
@@ -108,8 +103,7 @@ class SettingsForm extends ConfigFormBase
   /**
    * AJAX callback to update the email field.
    */
-  public function updateTypePlural(array &$form, FormStateInterface $form_state)
-  {
+  public function updateTypePlural(array &$form, FormStateInterface $form_state) {
     $webform_config_name = $this->getWebformConfigName();
     $config = $this->config($webform_config_name);
     if ($form_state->getValue('frequency_number') == 1) {
@@ -120,7 +114,8 @@ class SettingsForm extends ConfigFormBase
         'weeks' => t('Week'),
         'months' => t('Month'),
       ];
-    } else {
+    }
+    else {
       $form['frequency']['frequency_type']['#options'] = [
         'seconds' => t('Seconds'),
         'minutes' => t('Minutes'),
@@ -129,14 +124,14 @@ class SettingsForm extends ConfigFormBase
         'months' => t('Months'),
       ];
     }
+
     return $form['frequency']['frequency_type'];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function validateForm(array &$form, FormStateInterface $form_state)
-  {
+  public function validateForm(array &$form, FormStateInterface $form_state) {
   }
 
   /**

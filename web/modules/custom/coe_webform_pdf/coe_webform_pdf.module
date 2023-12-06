@@ -10,6 +10,7 @@
  */
 
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Serialization\Yaml;
 use Drupal\Core\Url;
@@ -64,29 +65,31 @@ function coe_webform_pdf_form_alter(&$form, FormStateInterface $form_state, $for
  * Adds a submission_pdf field to the webform if it doesn't exist already.
  *
  * @return void
- * @throws \Drupal\Core\Entity\EntityStorageException
+ * @throws EntityStorageException
  */
 function coe_webform_pdf_add_submssion_pdf_field(WebformInterface $webform) {
   $webform_elements = $webform->get('elements');
-  $no_field_added_yet = strpos($webform_elements, "submission_pdf") === false;
-  if (!empty($webform_elements) && $no_field_added_yet) {
-    $elements = Yaml::decode($webform_elements);
-    // add a field
-    $elements['submission_pdf'] = [
-      '#type' => 'webform_entity_print_attachment:pdf',
-      '#title' => 'Submission PDF',
-      '#filename' => '[webform:title]-submission-[webform_submission:sid].pdf',
-    ];
+  if (!empty($webform_elements)) {
+    $no_field_added_yet = strpos($webform_elements, "submission_pdf") === false;
+    if (!empty($webform_elements) && $no_field_added_yet) {
+      $elements = Yaml::decode($webform_elements);
+      // add a field
+      $elements['submission_pdf'] = [
+        '#type' => 'webform_entity_print_attachment:pdf',
+        '#title' => 'Submission PDF',
+        '#filename' => '[webform:title]-submission-[webform_submission:sid].pdf',
+      ];
 
-    $webform->set('elements', Yaml::encode($elements));
-    $webform->save();
+      $webform->set('elements', Yaml::encode($elements));
+      $webform->save();
+    }
   }
 }
 
 /**
  * Batch process callback to process each webform.
  */
-function coe_webform_pdf_process_webform_install($webform, &$context) {
+function coe_webform_pdf_process_webform_install_batch($webform, &$context) {
   coe_webform_pdf_add_submssion_pdf_field($webform);
 }
 

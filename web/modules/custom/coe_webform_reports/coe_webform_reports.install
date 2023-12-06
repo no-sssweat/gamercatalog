@@ -8,9 +8,29 @@
 /**
  * Implements hook_install().
  */
-//function coe_webform_reports_install() {
-//  \Drupal::messenger()->addStatus(__FUNCTION__);
-//}
+function coe_webform_reports_install() {
+  // Define the batch process.
+  $batch = [
+    'title' => t('Processing Webforms'),
+    'operations' => [],
+    'finished' => 'coe_webform_pdf_batch_finished',
+  ];
+
+  // Load all webforms and add them to the batch.
+  $webforms = \Drupal::entityTypeManager()
+    ->getStorage('webform')
+    ->loadMultiple();
+
+  foreach ($webforms as $webform) {
+    $batch['operations'][] = [
+      'coe_webform_reports_process_webform_install_batch',
+      [$webform],
+    ];
+  }
+
+  // Start the batch process.
+  batch_set($batch);
+}
 
 /**
  * Implements hook_uninstall().

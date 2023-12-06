@@ -3,7 +3,7 @@
 namespace Drupal\coe_webform_reports\Plugin\QueueWorker;
 
 use Drupal\coe_webform_reports\Service\AnalyticsDataClient;
-use Drupal\coe_webform_reports\Service\ViewCountService;
+use Drupal\coe_webform_reports\Service\ViewCount;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
@@ -15,7 +15,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * A worker plugin that removes a Webform Submission from the database.
  *
  * @QueueWorker(
- *   id = "coe_webform_reports_view_count",
+ *   id = "coe_webform_reports_view_count_queue",
  *   title = @Translation("Fetch view count from GA4 and save"),
  *   cron = {"time" = 10}
  * )
@@ -63,13 +63,17 @@ class WebformViewCount extends QueueWorkerBase implements ContainerFactoryPlugin
    * @param array $configuration
    * @param string $plugin_id
    * @param mixed $plugin_definition
-   * @param QueueFactory $queue_factory
-   * @param ViewCountService $view_count_service
-   * @param AnalyticsDataClient $analytics_data_client
+   * @param Drupal\Core\Queue\QueueFactory $queue_factory
+   * @param Drupal\coe_webform_reports\Service\ViewCountViewCount $view_count_service
+   * @param Drupal\coe_webform_reports\Service\AnalyticsDataClient $analytics_data_client
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition,
-                              QueueFactory $queue_factory, EntityTypeManagerInterface $entity_type_manager,
-                              ConfigFactoryInterface $config_factory, ViewCountService $view_count_service,
+  public function __construct(array $configuration,
+                              $plugin_id,
+                              $plugin_definition,
+                              QueueFactory $queue_factory,
+                              EntityTypeManagerInterface $entity_type_manager,
+                              ConfigFactoryInterface $config_factory,
+                              ViewCount $view_count_service,
                               AnalyticsDataClient $analytics_data_client) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->queueFactory = $queue_factory;
@@ -99,18 +103,23 @@ class WebformViewCount extends QueueWorkerBase implements ContainerFactoryPlugin
    * {@inheritdoc}
    */
   public function processItem($data) {
-    $wid = isset($data->id) && $data->id ? $data->id : NULL;
-    if (!$wid) {
-      throw new \Exception('Missing Webform Submission ID');
-      return;
+    $webform_id = $data->id;
+    $queued_time = $data->queued_time;
+    $run_tomorrow = $data->run_tomorrow;
+
+    $process_time = $queued_time;
+    if ($run_tomorrow) {
+      $process_time = strtotime("+1 Day", $queued_time);
     }
-    $webform_path = $data->path;
-    $view_count = $this->analyticsDataClient->getViewCount($webform_path);
-    if ($view_count) {
-      $this->viewCountService->setViewCount($wid, $view_count);
-    }
-    else {
-      // re-schedule
+    // Get view count from GA4 when it's time.
+    if ($queued_time >= $process_time) {
+      $view_count = $this->analyticsDataClient->getViewCount($webform_id);
+      if ($view_count) {
+        $this->viewCountService->setViewCount($webform_id, $view_count);
+      }
+      // re-schedule for tomorrow
+      $this->viewCountService->addToQueue($webform_id, TRUE);
     }
   }
+
 }

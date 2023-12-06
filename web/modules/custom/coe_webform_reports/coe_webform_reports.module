@@ -7,6 +7,7 @@
  */
 
 use Drupal\Component\Serialization\Yaml;
+use Drupal\views\ViewExecutable;
 use Drupal\webform\WebformInterface;
 use Drupal\webform\WebformSubmissionInterface;
 use Google\Analytics\Data\V1beta\Filter;
@@ -22,27 +23,36 @@ use Google\Analytics\Data\V1beta\Metric;
 use Google\Analytics\Data\V1beta\BetaAnalyticsDataClient;
 
 /**
+ * Batch process callback to process each webform.
+ */
+function coe_webform_reports_process_webform_install_batch($webform, &$context) {
+  coe_webform_pdf_add_completion_time_field($webform);
+  coe_webform_pdf_add_google_sheets_url_field($webform);
+}
+
+/**
+ * Batch process callback to run after processing all webforms.
+ */
+function coe_webform_reports_batch_finished($success, $results, $operations) {
+  if ($success) {
+    // The batch process was successful.
+    \Drupal::messenger()->addMessage(t('Webform processing completed successfully.'));
+  }
+  else {
+    // The batch process encountered an error.
+    \Drupal::messenger()->addError(t('Webform processing encountered an error.'));
+  }
+}
+
+/**
  * Implements hook_form_alter().
  */
 function coe_webform_reports_form_alter(&$form, &$form_state, $form_id) {
 
-  if ($form_id == 'webform_edit_form') {
-    $webform = $form_state->getFormObject()->getEntity();;
-    // Need to move this to a service method
-    /** @var \Drupal\Core\Queue\QueueFactory $queue_factory */
-    $queue_factory = \Drupal::service('queue');
-    /** @var \Drupal\Core\Queue\QueueInterface $queue */
-    $queue = $queue_factory->get('coe_webform_reports_view_count');
-    //Add to the queue.
-    $item = new \stdClass();
-    $item->id = $webform->id();
-    $item->path = $webform->url();
-    $queue->createItem($item);
-  }
+//  _api_test();
 
   // Note: Could not do this in submit handler due to AJAX nor in hook_entity_insert().
-  // Add completion_time field to webform entity if it doesn't exist yet.
-  // This field will keep track of how long the user took to fill out the form.
+  // Adds completion_time and google_sheets_url field to webform entity if it doesn't exist yet.
   $form_ids = [
     'webform_source_form',
     'webform_edit_form',
@@ -50,13 +60,15 @@ function coe_webform_reports_form_alter(&$form, &$form_state, $form_id) {
   if (in_array($form_id, $form_ids)) {
     $webform = $form_state->getFormObject()->getEntity();
     coe_webform_pdf_add_completion_time_field($webform);
+    coe_webform_pdf_add_google_sheets_url_field($webform);
   }
 
-  $current_route = \Drupal::routeMatch()->getRouteName();
-  // Is a webform
-  if (!empty($form['#webform_id']) && $current_route === 'entity.webform.canonical') {
-    $form['#attached']['library'][] = 'coe_webform_reports/time-tracker';
-  }
+//  // is a webform submission add form
+//  if (strpos($form_id, 'webform_submission') !== false
+//    && strpos($form_id, 'add_form') !== false) {
+//    // hide the Google Sheets URL field
+//    $form['elements']['google_sheets_url']['#access'] = FALSE;
+//  }
 
 }
 
@@ -77,16 +89,10 @@ function coe_webform_reports_webform_delete(WebformInterface $webform) {
 }
 
 function _api_test() {
-  $client = new Client();
-  $client->setAuthConfig('modules/custom/coe_webform_reports/client_secret_174960103407-2mudtsjrljrevic47j12b3rl52g1dhck.apps.googleusercontent.com.json');
-  $client->addScope('https://www.googleapis.com/auth/analytics.readonly');
-
-  // Set up the API client and authenticate.
-  // Create an authorized analytics service object.
-  $analytics = new Google_Service_AnalyticsData($client);
 //  ksm($analytics);
   // Call the Analytics Reporting API V4.
-  $response = _getReport($analytics);
+  $response = _getReport();
+  ksm($response);
 
 //  $propertyId = 'your-property-id'; // Replace with your GA4 property ID.
 //  $dateRange = new Google_Service_AnalyticsData_DateRange();
@@ -109,7 +115,7 @@ function _api_test() {
 // * @param service An authorized Analytics Reporting API V4 service object.
 // * @return The Analytics Reporting API V4 response.
 // */
-function _getReport($analytics) {
+function _getReport() {
 
   $google_api_service_client = \Drupal::entityTypeManager()->getStorage('google_api_service_client')->load('ga4');
   $googleService = \Drupal::service('google_api_service_client.client');
@@ -130,21 +136,29 @@ function _getReport($analytics) {
   $dateRange->setEndDate('today');
 
   $dimensions = [new Dimension(['name' => 'contentId'])];
-  $metrics = [new Metric(['name' => 'screenPageViews'])];
+  $metrics = [new Metric(['name' => 'eventCount'])];
 
   // Set the specific contentId you want to filter by.
   $specificContentId = 'webform-submission-contact-add-form';
 
-  // Will return the sum of those two
+//  // Will return the sum of those two
+//  $dimensionFilter = new FilterExpression([
+//    'filter' => new Filter([
+//      'field_name' => 'contentId',
+//      'in_list_filter' => new inListFilter([
+//        'values' => ['webform-submission-contact-add-form', 'webform-submission-test-add-form']
+//      ])
+//    ])
+//  ]);
+
   $dimensionFilter = new FilterExpression([
     'filter' => new Filter([
-      'field_name' => 'pagePath',
-      'in_list_filter' => new inListFilter([
-        'values' => ['/form/test', '/form/contact']
+      'field_name' => 'contentId',
+      'string_filter' => new stringFilter([
+        'value' => 'webform-submission-contact-add-form'
       ])
     ])
   ]);
-  ;
 
   $response = $client->runReport([
     'property' => 'properties/' . $propertyId,
@@ -172,15 +186,75 @@ function _getReport($analytics) {
  */
 function coe_webform_pdf_add_completion_time_field(WebformInterface $webform) {
   $webform_elements = $webform->get('elements');
-  $no_field_added_yet = strpos($webform_elements, "completion_time") === false;
-  if (!empty($webform_elements) && $no_field_added_yet) {
-    $elements = Yaml::decode($webform_elements);
-    // add the field
-    $elements['completion_time'] = [
-      '#type' => 'textfield',
-      '#title' => 'Completion Time',
-    ];
-    $webform->set('elements', Yaml::encode($elements));
-    $webform->save();
+  if (!empty($webform_elements)) {
+    $no_field_added_yet = strpos($webform_elements, "completion_time") === false;
+    if (!empty($webform_elements) && $no_field_added_yet) {
+      $elements = Yaml::decode($webform_elements);
+      // add the field
+      $elements['completion_time'] = [
+        '#type' => 'textfield',
+        '#title' => 'Completion Time',
+      ];
+      $webform->set('elements', Yaml::encode($elements));
+      $webform->save();
+    }
   }
+}
+
+/**
+ * Adds a submission_pdf field to the webform if it doesn't exist already.
+ *
+ * @return void
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function coe_webform_pdf_add_google_sheets_url_field(WebformInterface $webform) {
+  $webform_elements = $webform->get('elements');
+  if (!empty($webform_elements)) {
+    $no_field_added_yet = strpos($webform_elements, "google_sheets_url") === false;
+    if (!empty($webform_elements) && $no_field_added_yet) {
+      $elements = Yaml::decode($webform_elements);
+      // add the field
+      $elements['google_sheets_url'] = [
+        '#type' => 'webform_link',
+        '#title' => 'Google Sheets URL',
+        '#title__access' => false,
+      ];
+      $webform->set('elements', Yaml::encode($elements));
+      $webform->save();
+    }
+  }
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK_alter() for webform templates.
+ */
+function coe_webform_reports_theme_suggestions_webform_alter(array &$suggestions, array $variables) {
+  $suggestions[] = 'webform__reports_template';
+}
+
+/**
+ * Implements hook_theme().
+ */
+function coe_webform_reports_theme($existing, $type, $theme, $path) {
+  return [
+    'webform__reports_template' => [
+      'render element' => 'element',
+      'base hook' => 'webform',
+      'variables' => [
+        'webform_id' => null
+      ],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_preprocess_HOOK().
+ */
+function coe_webform_reports_preprocess_webform__reports_template(&$variables) {
+  $webform_id = $variables['element']['#webform_id'];
+  $variables['webform_id'] = $webform_id;
+}
+
+function coe_webform_reports_views_pre_render(ViewExecutable $view) {
+//  ksm($view);
 }

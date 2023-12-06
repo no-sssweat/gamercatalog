@@ -26,4 +26,5 @@ class CustomEntityLabelFilter extends InOperator {
 
     parent::query();
   }
+
 }

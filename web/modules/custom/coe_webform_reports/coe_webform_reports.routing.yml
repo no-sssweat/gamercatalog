@@ -1,5 +1,5 @@
 coe_webform_reports.page:
-  path: '/admin/reports-page'
+  path: '/admin/reports-page/{webform}'
   defaults:
     _controller: '\Drupal\coe_webform_reports\Controller\ReportsPage::content'
     _title: 'Submission Reports Page'

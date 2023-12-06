@@ -1,16 +1,13 @@
 <?php
 
-// modules/custom/your_module/src/Service/AnalyticsDataClient.php
-
 namespace Drupal\coe_webform_reports\Service;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\google_api_service_client\ClientInterface;
 use Google\Analytics\Data\V1beta\BetaAnalyticsDataClient;
 use Google\Analytics\Data\V1beta\DateRange;
 use Google\Analytics\Data\V1beta\Dimension;
 use Google\Analytics\Data\V1beta\Filter;
-use Google\Analytics\Data\V1beta\Filter\InListFilter;
+//use Google\Analytics\Data\V1beta\Filter\InListFilter;
 use Google\Analytics\Data\V1beta\Filter\StringFilter;
 use Google\Analytics\Data\V1beta\FilterExpression;
 use Google\Analytics\Data\V1beta\Metric;
@@ -24,28 +21,28 @@ class AnalyticsDataClient {
   /**
    * The entity type manager.
    *
-   * @var EntityTypeManagerInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
   protected $entityTypeManager;
 
   /**
    * The Google API Service Client.
    *
-   * @var ClientInterface
+   * @var \Drupal\google_api_service_client\ClientInterface
    */
   protected $googleApiClient;
 
   /**
    * The logger.
    *
-   * @var LoggerInterface
+   * @var \Psr\Log\LoggerInterface
    */
   protected $logger;
 
   /**
    * Constructs a new AnalyticsDataClient object.
    *
-   * @param EntityTypeManagerInterface $entity_type_manager
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
    * @param $google_api_client
    *   The Google API Service Client.
@@ -62,7 +59,7 @@ class AnalyticsDataClient {
    * @return integer
    *   A sample result.
    */
-  public function getViewCount($webform_path) {
+  public function getViewCount($webform_id) {
 
       $google_api_service_client = $this->googleApiClientStorage->load('ga4');
       // Set the account.
@@ -82,7 +79,7 @@ class AnalyticsDataClient {
       $dateRange->setEndDate('today');
 
       $dimensions = [new Dimension(['name' => 'contentId'])];
-      $metrics = [new Metric(['name' => 'screenPageViews'])];
+      $metrics = [new Metric(['name' => 'eventCount'])];
 
       // Set the specific contentId you want to filter by.
       $specificContentId = 'webform-submission-contact-add-form';
@@ -108,9 +105,9 @@ class AnalyticsDataClient {
 
       $dimensionFilter = new FilterExpression([
         'filter' => new Filter([
-          'field_name' => 'pagePath',
+          'field_name' => 'contentId',
           'string_filter' => new stringFilter([
-            'value' => $webform_path,
+            'value' => $webform_id,
           ])
         ])
       ]);

@@ -14,12 +14,12 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * A worker plugin that removes a Webform Submission from the database.
  *
  * @QueueWorker(
- *   id = "webform_submission_cleaner",
- *   title = @Translation("Webform Submission Cleaner"),
+ *   id = "webform_submission_drupal_purge",
+ *   title = @Translation("Webform Submission Drupal Purge"),
  *   cron = {"time" = 10}
  * )
  */
-class WebformSubmissionCleaner extends QueueWorkerBase implements ContainerFactoryPluginInterface {
+class WebformSubmissionDrupalPurge extends QueueWorkerBase implements ContainerFactoryPluginInterface {
 
   /**
    * The queue factory.
@@ -48,10 +48,13 @@ class WebformSubmissionCleaner extends QueueWorkerBase implements ContainerFacto
    * @param array $configuration
    * @param string $plugin_id
    * @param mixed $plugin_definition
-   * @param QueueFactory $queue_factory
+   * @param \Drupal\Core\Queue\QueueFactory $queue_factory
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition,
-                              QueueFactory $queue_factory, EntityTypeManagerInterface $entity_type_manager,
+  public function __construct(array $configuration,
+                              $plugin_id,
+                              $plugin_definition,
+                              QueueFactory $queue_factory,
+                              EntityTypeManagerInterface $entity_type_manager,
                               ConfigFactoryInterface $config_factory) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->queueFactory = $queue_factory;
@@ -80,7 +83,6 @@ class WebformSubmissionCleaner extends QueueWorkerBase implements ContainerFacto
     $sid = isset($data->id) && $data->id ? $data->id : NULL;
     if (!$sid) {
       throw new \Exception('Missing Webform Submission ID');
-      return;
     }
 
     // Check if the item is scheduled for execution.
@@ -103,9 +105,10 @@ class WebformSubmissionCleaner extends QueueWorkerBase implements ContainerFacto
       }
       else {
         // Not time to delete yet, re-add to the queue.
-        $queue = $this->queueFactory->get('webform_submission_cleaner');
+        $queue = $this->queueFactory->get('webform_submission_drupal_purge');
         $queue->createItem($data);
       }
     }
   }
+
 }

@@ -1,12 +1,12 @@
 services:
   coe_webform_reports.view_count:
-    class: 'Drupal\coe_webform_reports\Service\ViewCountService'
-    arguments: ['@database']
+    class: 'Drupal\coe_webform_reports\Service\ViewCount'
+    arguments: ['@database', '@queue']
 
-#  coe_webform_reports.analytics_data_client:
-#    class: Drupal\coe_webform_reports\Service\AnalyticsDataClient
-#    arguments: ['@entity_type.manager', '@google_api_service_client.client',
-#                '@logger.coe_webform_reports']
+  coe_webform_reports.analytics_data_client:
+    class: Drupal\coe_webform_reports\Service\AnalyticsDataClient
+    arguments: ['@entity_type.manager', '@google_api_service_client.client',
+                '@logger.coe_webform_reports']
 
   # Logger.
   logger.coe_webform_reports:
