@@ -1,0 +1,13 @@
+diff --git a/themes/seven/css/classy/components/inline-form.css b/themes/seven/css/classy/components/inline-form.css
+index b5201a78..27ce6b59 100644
+--- a/themes/seven/css/classy/components/inline-form.css
++++ b/themes/seven/css/classy/components/inline-form.css
+@@ -4,7 +4,7 @@
+  */
+ 
+ .form--inline .form-item {
+-  float: left; /* LTR */
++  display: inline-block; /* LTR */
+   margin-right: 0.5em; /* LTR */
+ }
+ [dir="rtl"] .form--inline .form-item {

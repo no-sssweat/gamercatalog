@@ -109,6 +109,11 @@ class Date extends NumericDate implements ContainerFactoryPluginInterface {
     // value as UNIX timestamp 0.
     $min = (!empty($this->value['min'])) ? $this->value['min'] : '@0';
 
+    if (!empty($this->value['max']) && !strpos($this->value['max'], ':')) {
+      // No time was specified, so make the date range inclusive.
+      $this->value['max'] .= ' +1 day';
+    }
+
     // Convert to ISO format and format for query. UTC timezone is used since
     // dates are stored in UTC.
     $a = new DateTimePlus($min, new \DateTimeZone($timezone));

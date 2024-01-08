@@ -13,37 +13,52 @@ use Drupal\Core\Form\FormStateInterface;
  */
 class Date extends NumericFilter {
 
-  protected function defineOptions() {
-    $options = parent::defineOptions();
+  /**
+   * {@inheritdoc}
+   */
+  protected function valueForm(&$form, FormStateInterface $form_state) {
+    parent::valueForm($form, $form_state);
 
-    // value is already set up properly, we're just adding our new field to it.
-    $options['value']['contains']['type']['default'] = 'date';
+    if (!$form_state->get('exposed')) {
+      // Use default values from options on the config form.
+      foreach (['min', 'max', 'value'] as $component) {
+        if (isset($this->options['value'][$component]) && isset($form['value'][$component])) {
+          $form['value'][$component]['#default_value'] = $this->options['value'][$component];
 
-    return $options;
+          // Add description.
+          $form['value'][$component]['#description'] = $this->t('A date in any machine readable format (CCYY-MM-DD is preferred) or an offset from the current time such as "@example1" or "@example2".', [
+            '@example1' => '+1 day',
+            '@example2' => '-2 years -10 days',
+          ]);
+        }
+      }
+    }
+    else {
+      // Convert relative date string representations to actual dates
+      // to solve potential datepicker problems.
+      foreach (['min', 'max', 'value'] as $component) {
+        if (
+          isset($form['value'][$component]) &&
+          !empty($form['value'][$component]['#default_value']) &&
+          preg_match('/[a-zA-Z]+/', $form['value'][$component]['#default_value'])
+        ) {
+          $form['value'][$component]['#default_value'] = date('Y-m-d', strtotime($form['value'][$component]['#default_value']));
+        }
+      }
+    }
   }
 
   /**
-   * Add a type selector to the value form.
+   * {@inheritdoc}
    */
-  protected function valueForm(&$form, FormStateInterface $form_state) {
-    if (!$form_state->get('exposed')) {
-      $form['value']['type'] = [
-        '#type' => 'radios',
-        '#title' => $this->t('Value type'),
-        '#options' => [
-          'date' => $this->t('A date in any machine readable format. CCYY-MM-DD HH:MM:SS is preferred.'),
-          'offset' => $this->t('An offset from the current time such as "@example1" or "@example2"', ['@example1' => '+1 day', '@example2' => '-2 hours -30 minutes']),
-        ],
-        '#default_value' => !empty($this->value['type']) ? $this->value['type'] : 'date',
-      ];
-    }
-    parent::valueForm($form, $form_state);
-  }
-
   public function validateOptionsForm(&$form, FormStateInterface $form_state) {
     parent::validateOptionsForm($form, $form_state);
 
-    if (!empty($this->options['exposed']) && $form_state->isValueEmpty(['options', 'expose', 'required'])) {
+    if (!empty($this->options['exposed']) && $form_state->isValueEmpty([
+      'options',
+      'expose',
+      'required',
+    ])) {
       // Who cares what the value is if it's exposed and non-required.
       return;
     }
@@ -51,6 +66,9 @@ class Date extends NumericFilter {
     $this->validateValidTime($form['value'], $form_state, $form_state->getValue(['options', 'operator']), $form_state->getValue(['options', 'value']));
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function validateExposed(&$form, FormStateInterface $form_state) {
     if (empty($this->options['exposed'])) {
       return;
@@ -105,38 +123,22 @@ class Date extends NumericFilter {
       return FALSE;
     }
 
-    // Special case when validating grouped date filters because the
-    // $group['value'] array contains the type of filter (date or offset) and
-    // therefore the number of items the comparison has to be done against is
-    // one greater.
     $operators = $this->operators();
-    $expected = $operators[$group['operator']]['values'] + 1;
+    $expected = $operators[$group['operator']]['values'];
     $actual = count(array_filter($group['value'], 'static::arrayFilterZero'));
 
     return $actual == $expected;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function acceptExposedInput($input) {
     if (empty($this->options['exposed'])) {
       return TRUE;
     }
 
-    // Store this because it will get overwritten.
-    $type = NULL;
-    if ($this->isAGroup()) {
-      if (is_array($this->group_info)) {
-        $type = $this->group_info['type'];
-      }
-    }
-    else {
-      $type = $this->value['type'];
-    }
     $rc = parent::acceptExposedInput($input);
-
-    // Restore what got overwritten by the parent.
-    if (!is_null($type)) {
-      $this->value['type'] = $type;
-    }
 
     // Don't filter if value(s) are empty.
     $operators = $this->operators();
@@ -156,8 +158,8 @@ class Date extends NumericFilter {
     }
     elseif ($operators[$operator]['values'] == 2) {
       // When the operator is either between or not between the input contains
-      // two values.
-      if ($this->value['min'] == '' || $this->value['max'] == '') {
+      // at least one value.
+      if ($this->value['min'] == '' && $this->value['max'] == '') {
         return FALSE;
       }
     }
@@ -165,31 +167,57 @@ class Date extends NumericFilter {
     return $rc;
   }
 
-  protected function opBetween($field) {
-    $a = intval(strtotime($this->value['min'], 0));
-    $b = intval(strtotime($this->value['max'], 0));
-
-    if ($this->value['type'] == 'offset') {
-      // Keep sign.
-      $a = '***CURRENT_TIME***' . sprintf('%+d', $a);
-      // Keep sign.
-      $b = '***CURRENT_TIME***' . sprintf('%+d', $b);
+  /**
+   * Helper function to get converted values for the query.
+   *
+   * @return array
+   *   Array of timestamps.
+   */
+  protected function getConvertedValues() {
+    $values = [];
+    if (!empty($this->value['max']) && !strpos($this->value['max'], ':')) {
+      // No time was specified, so make the date range inclusive.
+      $this->value['max'] .= ' +1 day';
     }
-    // This is safe because we are manually scrubbing the values.
-    // It is necessary to do it this way because $a and $b are formulas when using an offset.
-    $operator = strtoupper($this->operator);
-    $this->query->addWhereExpression($this->options['group'], "$field $operator $a AND $b");
+    foreach (['min', 'max', 'value'] as $component) {
+      if (!empty($this->value[$component])) {
+        $values[$component] = intval(strtotime($this->value[$component]));
+      }
+    }
+    return $values;
   }
 
-  protected function opSimple($field) {
-    $value = intval(strtotime($this->value['value'], 0));
-    if (!empty($this->value['type']) && $this->value['type'] == 'offset') {
-      // Keep sign.
-      $value = '***CURRENT_TIME***' . sprintf('%+d', $value);
+  /**
+   * {@inheritdoc}
+   */
+  protected function opBetween($field) {
+    $values = $this->getConvertedValues();
+    if (empty($values)) {
+      // do nothing
+      return;
     }
-    // This is safe because we are manually scrubbing the value.
-    // It is necessary to do it this way because $value is a formula when using an offset.
-    $this->query->addWhereExpression($this->options['group'], "$field $this->operator $value");
+    // Support providing only one value for exposed filters.
+    if (empty($values['min'])) {
+      $operator = $this->operator === 'between' ? '<=' : '>';
+      $this->query->addWhereExpression($this->options['group'], "$field $operator {$values['max']}");
+    }
+    elseif (empty($values['max'])) {
+      $operator = $this->operator === 'between' ? '>=' : '<';
+      $this->query->addWhereExpression($this->options['group'], "$field $operator {$values['min']}");
+    }
+    // Both values given.
+    else {
+      $operator = strtoupper($this->operator);
+      $this->query->addWhereExpression($this->options['group'], "$field $operator {$values['min']} AND {$values['max']}");
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function opSimple($field) {
+    $values = $this->getConvertedValues();
+    $this->query->addWhereExpression($this->options['group'], "$field $this->operator {$values['value']}");
   }
 
 }

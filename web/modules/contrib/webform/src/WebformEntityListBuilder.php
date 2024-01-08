@@ -129,7 +129,6 @@ class WebformEntityListBuilder extends ConfigEntityListBuilder {
         return new RedirectResponse($webform->toUrl()->setAbsolute(TRUE)->toString());
       }
     }
-
     $build = [];
 
     // Filter form.
