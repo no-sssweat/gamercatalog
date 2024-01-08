@@ -1,0 +1,8 @@
+name: COE Webform Enhancements
+type: module
+description: 'Provides enhanced functionality for Webforms (includes Google Drive and Google Sheets integrations).'
+package: Custom
+core_version_requirement: ^8 || ^9 || ^10
+dependencies:
+  - webform:webform
+  - google_api_client:google_api_client

@@ -2,10 +2,14 @@
 
 namespace Drupal\coe_webform_reports\Controller;
 
+use Drupal\coe_webform_reports\Service\ViewCount;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Url;
 use Drupal\views\ViewExecutableFactory;
+use Drupal\webform\WebformInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Class ReportsPage
@@ -15,16 +19,44 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 class ReportsPage extends ControllerBase {
 
   /**
+   * The entity type manager service.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
+
+  /**
+   * The config factory service.
+   *
+   * @var \Drupal\views\ViewExecutableFactory
+   */
+  protected $viewExecutableFactory;
+
+  /**
+   * The view count service.
+   *
+   * @var \Drupal\coe_webform_reports\Service\ViewCount
+   */
+  protected $viewCountService;
+
+  /**
    * Constructor for MyController.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
    *   The entity type manager service.
    * @param \Drupal\views\ViewExecutableFactory $viewExecutableFactory
    *   The ViewExecutableFactory service.
+   * @param \Drupal\coe_webform_reports\Service\ViewCount $view_count_service
+   *   The view count service.
    */
-  public function __construct(EntityTypeManagerInterface $entityTypeManager, ViewExecutableFactory $viewExecutableFactory) {
-    $this->entityTypeManager = $entityTypeManager;
-    $this->viewExecutableFactory = $viewExecutableFactory;
+  public function __construct(
+    EntityTypeManagerInterface $entityTypeManager,
+    ViewExecutableFactory $viewExecutableFactory,
+    ViewCount $view_count_service
+  ) {
+      $this->entityTypeManager = $entityTypeManager;
+      $this->viewExecutableFactory = $viewExecutableFactory;
+      $this->viewCountService = $view_count_service;
   }
 
   /**
@@ -33,33 +65,77 @@ class ReportsPage extends ControllerBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('entity_type.manager'),
-      $container->get('views.executable')
+      $container->get('views.executable'),
+      $container->get('coe_webform_reports.view_count'),
     );
   }
 
+  /**
+   * Generates content for the webform report page.
+   *
+   * @param mixed $webform
+   *   The webform or webform ID for which the report is generated.
+   *
+   * @return array
+   *   An associative render array containing the generated content for the webform report page.
+   */
   public function content($webform) {
 
     $webform_id = $webform;
 
     $view = $this->entityTypeManager->getStorage('view')->load('webform_report');
     $view = $this->viewExecutableFactory->get($view);
-    $display_id = 'embed_administer';
-    $view->setDisplay('embed_administer');
+    $display_id = 'block_1';
+    $view->setDisplay($display_id);
     // Add a contextual filter to the view.
     $contextual_filter_value = $webform_id;
     // Set the argument.
     $view->setArguments([$contextual_filter_value]);
 
     $webform = $this->entityTypeManager->getStorage('webform')->load($webform_id);
+    if (!($webform instanceof WebformInterface)) {
+      // Webform not found, throw exception
+      throw new NotFoundHttpException();
+    }
     $fields = $webform->getElementsDecoded();
-//    ksm($fields);
     $fields['operations'] = [
       '#title' => 'Operations',
       '#type' => 'operations',
     ];
+
+    // Pull out nested fields
     foreach ($fields as $field_name => $field_config) {
-//      ksm($field_config);
-      if ($field_config['#type'] != 'webform_actions') {
+      // Pull out nested table fields
+      if ($field_config['#type'] == 'webform_table') {
+        foreach ($field_config as $table_keys => $table_values) {
+          if (strpos($table_keys, 'table_') !== FALSE) {
+            foreach ($table_values as $table_row_key => $table_row) {
+              if (is_array($table_row)) {
+                $fields[$table_row_key] = $table_row;
+              }
+            }
+          }
+        }
+        unset($fields[$field_name]);
+        // unset and set, so it moves operations to the last key of the fields array, to make it display last.
+        $operations = $fields['operations'];
+        unset($fields['operations']);
+        $fields['operations'] = $operations;
+      }
+      // Pull out nested page fields
+      if ($field_config['#type'] == 'webform_wizard_page') {
+        foreach ($field_config as $page_field_keys => $page_field_values) {
+          if (is_array($page_field_values)) {
+            $fields[$page_field_keys] = $page_field_values;
+          }
+        }
+        unset($fields[$field_name]);
+      }
+    }
+
+    foreach ($fields as $field_name => $field_config) {
+
+      if (!empty($field_config['#type']) && $field_config['#type'] != 'webform_actions' && !empty($field_config['#title'])) {
         // Add field
         $table = 'webform_submission_field_' . $webform_id . '_' . $field_name;
         $field = 'webform_submission_value';
@@ -76,6 +152,12 @@ class ReportsPage extends ControllerBase {
           'webform_multiple_delta' => 0,
           'webform_check_access' => 1,
         ];
+        if ($field_config['#type'] == 'checkbox' || $field_config['#type'] == 'checkboxes') {
+          $field_settings['webform_element_format'] = 'value';
+        }
+        if ($field_config['#type'] == 'date') {
+          $field_settings['webform_element_format'] = 'm_n_y';
+        }
         $image_fields = [
           'webform_signature',
           'webform_image',
@@ -84,8 +166,16 @@ class ReportsPage extends ControllerBase {
           $field_settings['webform_element_format'] = 'image';
         }
         $view->addHandler($display_id, 'field', $table, $field, $field_settings);
-//        ksm($field_name);
-//        ksm($field_config);
+
+        $skip_filters_for = [
+          'completion_time',
+          'google_sheets_url',
+          'submission_pdf',
+        ];
+        if (in_array($field_name, $skip_filters_for)) {
+          // don't want to add a filter for this field
+          continue;
+        }
 
         // Add filters
         $text_filters = [
@@ -127,6 +217,8 @@ class ReportsPage extends ControllerBase {
 
         $radio_filters = [
           'radios',
+          'checkboxes',
+          'select'
         ];
         if (in_array($field_config['#type'], $radio_filters)) {
           // Add filter
@@ -224,19 +316,47 @@ class ReportsPage extends ControllerBase {
       }
     }
 
-//    $view->preExecute();
+    $view->preExecute();
     $view->execute();
+
     $view_output = $view->render();
+    $webform_id = $webform->id();
+    $view_count = $this->viewCountService->getViewCount($webform_id) ?? 0;
+    $average_time = $this->viewCountService->getAverageTime($webform_id);
+    $formatted_time = $this->viewCountService->convertSecondsToTime($average_time);
+
+    $current_url = \Drupal::request()->getRequestUri();
+    // url has the "?"
+    if (strpos($current_url, '?') !== FALSE) {
+      $current_url = str_replace('?', '/csv/?', $current_url);
+    }
+    else {
+      $current_url = $current_url . '/csv';
+    }
+
+    $destination_url = Url::fromUri('internal:' . $current_url);
 
     return [
       'top' => [
-        '#markup' => 'Hello, this is my custom page content!',
+        '#markup' => "<p>Views: $view_count</p>
+            <p>Avg completion time: $formatted_time</p>",
+      ],
+      'button' => [
+        '#type' => 'link',
+        '#title' => t('Download as CSV'),
+        '#url' => $destination_url,
+        '#attributes' => ['class' => ['button', 'button--primary', 'button--download']],
+        '#attached' => [
+          'library' => [
+            'coe_webform_reports/webform-admin-results',
+          ],
+        ],
       ],
       'body' => [
         '#type' => 'block',
         'content' => $view_output,
         '#cache' => $view->getCacheTags(),
-      ]
+      ],
     ];
   }
 

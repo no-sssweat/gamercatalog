@@ -1,0 +1,26 @@
+.webform-embed {
+  max-width: 969px;
+  margin: 0 auto;
+}
+
+.webform-embed .webform-embed--header {
+  margin-bottom: 2rem;
+}
+
+.webform-embed .webform_embed_logo {
+  display: block;
+  width: 100%;
+  max-width: 9.2rem;
+}
+
+.webform-embed .webform-embed--main {
+  padding: 0 1rem 1rem;
+}
+
+.webform-embed .webform-embed--footer {
+  padding: 2rem 1rem 0;
+
+  p {
+    max-width: 100%;
+  }
+}

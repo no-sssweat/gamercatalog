@@ -1,0 +1,10 @@
+webform_embed:
+  css:
+    theme:
+      css/webform-embed.css: {}
+  js:
+    js/webform-embed.js: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
+    - core/once

@@ -9,6 +9,7 @@
  * @see https://www.drupal.org/node/2217931
  */
 
+use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\webform\Entity\Webform;
 use Drupal\webform\Entity\WebformSubmission;
 use Drupal\webform\WebformSubmissionInterface;
@@ -18,19 +19,22 @@ use Drupal\webform\WebformSubmissionInterface;
  */
 function coe_webform_purge_webform_submission_insert(WebformSubmissionInterface $webform_submission) {
   $webform_submission_purge = \Drupal::service('coe_webform_purge.submission');
-  $has_no_google_sheet = empty($webform_submission->getElementData('google_sheets_url')['url']);
-  if ($has_no_google_sheet) {
-    $webform_submission_purge->addToDrupalPurgeQueue($webform_submission);
-  }
-  else {
-    $webform_submission_purge->addToSheetsPurgeQueue($webform_submission);
+  $webform_id = $webform_submission->getWebform()->id();
+  $needs_purging = $webform_submission_purge->needsPurging($webform_id);
+  if ($needs_purging) {
+    $spreadsheet_id = $webform_submission_purge->getSpreadSheetID($webform_id);
+    if ($spreadsheet_id) {
+      $webform_submission_purge->addToSheetsPurgeQueue($webform_submission, $spreadsheet_id);
+    } else {
+      $webform_submission_purge->addToDrupalPurgeQueue($webform_submission);
+    }
   }
 }
 
 /**
  * Batch operation to load webform submissions.
  */
-function custom_module_load_webform_submissions($webform_id, &$context) {
+function coe_webform_purge_load_webform_submissions($webform_id, &$context) {
   $context['results']['skip_message'] = FALSE;
   $context['results']['additional_value'] = 'This is an additional value.';
   // Initialize context if not set.
@@ -86,7 +90,8 @@ function custom_module_load_webform_submissions($webform_id, &$context) {
 function custom_module_batch_finished($success, $results, $operations) {
   if ($results['skip_message']) {
     // Don't show any message
-  } elseif ($success) {
+  }
+  elseif ($success) {
     \Drupal::messenger()->addMessage(t('Scheduled all existing submissions of @title for deletion.', [
       '@title' => $results['title'],
     ]));

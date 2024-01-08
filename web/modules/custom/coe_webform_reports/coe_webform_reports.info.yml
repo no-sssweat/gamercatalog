@@ -3,6 +3,7 @@ type: module
 description: Creates report pages.
 package: Custom
 core_version_requirement: ^9 || ^10
+configure: coe_webform_reports.settings
 dependencies:
   - webform
   - google_api_client

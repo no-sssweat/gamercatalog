@@ -1,0 +1,14 @@
+coe_webform_enhancements.webform_embed:
+  path: '/form/{webform_id}/embed'
+  defaults:
+    _controller: '\Drupal\coe_webform_enhancements\Controller\WebformEmbedController::getRenderedWebform'
+    _title: 'Webform Embed'
+  requirements:
+    _permission: 'access content'
+coe_webform_enhancements.google_api_test:
+  path: '/google-api-test/{row_id}'
+  defaults:
+    _controller: '\Drupal\coe_webform_enhancements\Controller\GoogleApiTestController::build'
+    _title: 'Google API Test'
+  requirements:
+    _permission: 'access content'

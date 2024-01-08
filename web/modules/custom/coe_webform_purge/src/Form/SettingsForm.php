@@ -170,7 +170,7 @@ class SettingsForm extends ConfigFormBase {
     $batch = [
       'title' => t('Loading Webform Submissions'),
       'operations' => [
-        ['custom_module_load_webform_submissions', [$webform_id]],
+        ['coe_webform_purge_load_webform_submissions', [$webform_id]],
       ],
       'finished' => 'custom_module_batch_finished',
       'progress_message' => t('Processed @current out of @total submissions.'),

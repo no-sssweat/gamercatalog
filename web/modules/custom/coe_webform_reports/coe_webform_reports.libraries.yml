@@ -14,3 +14,15 @@ time-tracker:
   css:
     component:
       css/time-tracker.css: {}
+
+webform-admin-results:
+  js:
+    js/webform-admin-results.js: { }
+  css:
+    component:
+      css/webform-admin-results.css: {}
+
+webform-admin-build:
+  css:
+    component:
+      css/webform-admin-build.css: {}

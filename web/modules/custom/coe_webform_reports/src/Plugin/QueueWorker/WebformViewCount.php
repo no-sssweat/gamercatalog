@@ -46,7 +46,7 @@ class WebformViewCount extends QueueWorkerBase implements ContainerFactoryPlugin
   /**
    * The view count service.
    *
-   * @var Drupal\coe_webform_reports\Service\ViewCountService
+   * @var Drupal\coe_webform_reports\Service\ViewCount
    */
   protected $viewCountService;
 
@@ -64,7 +64,7 @@ class WebformViewCount extends QueueWorkerBase implements ContainerFactoryPlugin
    * @param string $plugin_id
    * @param mixed $plugin_definition
    * @param Drupal\Core\Queue\QueueFactory $queue_factory
-   * @param Drupal\coe_webform_reports\Service\ViewCountViewCount $view_count_service
+   * @param Drupal\coe_webform_reports\Service\ViewCount $view_count_service
    * @param Drupal\coe_webform_reports\Service\AnalyticsDataClient $analytics_data_client
    */
   public function __construct(array $configuration,

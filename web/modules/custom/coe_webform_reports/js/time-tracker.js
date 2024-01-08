@@ -1,18 +1,22 @@
-(function ($) {
-  Drupal.behaviors.coe_webform_reports_time_tracker = {
+(function ($, Drupal, drupalSettings) {
+  Drupal.behaviors.realTimeSecondsCounter = {
     attach: function (context, settings) {
-      // Record the start time when the form is loaded.
-      var startTime = new Date().getTime();
+      // Select the completion_time input field.
+      var completionTimeField = $('input[name="completion_time"]', context);
 
-      // Attach a submit handler to the form.
-      $('.webform-button--submit', context).once('timeTrack').hover(function () {
-        // Calculate the time difference between start time and submission time.
-        var endTime = new Date().getTime();
-        var timeDifference = Math.floor((endTime - startTime) / 1000); // Convert milliseconds to seconds
+      // Check if the field has a value.
+      var initialSeconds = parseInt(completionTimeField.val()) || 0;
 
-        // Set the calculated time difference in a hidden form field.
-        $('input[name="completion_time"]').val(timeDifference);
-      });
+      // Function to update the field value with the current count.
+      function updateField() {
+        completionTimeField.val(initialSeconds++);
+      }
+
+      // Start counting from the initial value.
+      updateField();
+
+      // Set up an interval to update the field every second.
+      setInterval(updateField, 1000);
     }
   };
-})(jQuery);
+})(jQuery, Drupal, drupalSettings);

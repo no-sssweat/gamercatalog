@@ -1,0 +1,317 @@
+<?php
+
+/**
+ * @file
+ * The coe_webform_enhancements module file.
+ */
+
+use Drupal\Component\Serialization\Yaml;
+use Drupal\webform\WebformInterface;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Implements hook_theme.
+ */
+function coe_webform_enhancements_theme($existing, $type, $theme, $path) {
+  return [
+    'page__webform_embed' => [
+      'variables' => [
+        'webform_output' => NULL,
+        'logo_url' => NULL,
+        'color_hex' => NULL,
+        'footer' => NULL,
+      ],
+    ],
+    'webform_handler_googlesheets_submissions_summary' => [
+      'variables' => ['settings' => NULL, 'handler' => []],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function coe_webform_enhancements_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // Check if the form is a webform.
+  if (strpos($form_id, 'webform_submission') === 0) {
+    // Must move out of elements and increase weight, so it shows up after the reCaptcha.
+    $form['elements']['actions']['#weight'] = 99.9;
+    $form['button'] = $form['elements']['actions'];
+    unset($form['elements']['actions']);
+  }
+
+  // Add the google_upload_status_element to the webform if it has the "googlesheets_submissions" handler.
+  $webform_form_ids = [
+    'webform_source_form',
+    'webform_edit_form',
+    'webform_handlers_form',
+  ];
+  if (in_array($form_id, $webform_form_ids)) {
+    /** @var \Drupal\webform\WebformInterface */
+    $webform = $form_state->getFormObject()->getEntity();
+    coe_webform_enhancements_add_google_upload_status_element($webform);
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for webform_settings_form.
+ */
+function coe_webform_enhancements_form_webform_settings_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // These settings will be applied to the current webform.
+  $webform = $form_state->getFormObject()->getEntity();
+
+  $form['third_party_settings']['coe_webform_enhancements'] = [
+    '#type' => 'details',
+    '#title' => t('COE Webform Enhancements'),
+    '#open' => TRUE,
+    '#tree' => TRUE,
+  ];
+
+  $form['third_party_settings']['coe_webform_enhancements']['webform_embed'] = [
+    '#type' => 'details',
+    '#title' => t('Webform Embed'),
+    '#open' => TRUE,
+    '#tree' => TRUE,
+  ];
+
+  $form['third_party_settings']['coe_webform_enhancements']['webform_embed']['logo'] = [
+    '#type' => 'managed_file',
+    '#title' => t('Logo'),
+    '#upload_location' => 'public://webform/logo/',
+    '#default_value' => $webform->getThirdPartySetting('coe_webform_enhancements', 'logo'),
+    '#upload_validators' => [
+      'file_validate_extensions' => ['png gif jpg jpeg'],
+    ],
+    '#description' => t('Upload a logo to be displayed on the webform embed. Only files with the following extensions are allowed: png, gif, jpg, jpeg.'),
+  ];
+
+  $form['third_party_settings']['coe_webform_enhancements']['webform_embed']['color_hex'] = [
+    '#type' => 'textfield',
+    '#title' => t('Color Hex'),
+    '#default_value' => $webform->getThirdPartySetting('coe_webform_enhancements', 'color_hex'),
+    '#maxlength' => '6',
+    '#description' => t('Enter a 6 digit hex value for the color used on the webform embed.')
+  ];
+
+  $form['third_party_settings']['coe_webform_enhancements']['webform_embed']['footer'] = [
+    '#type' => 'text_format',
+    '#title' => t('Footer'),
+    '#default_value' => $webform->getThirdPartySetting('coe_webform_enhancements', 'footer', ''),
+    '#format' => $webform->getThirdPartySetting('coe_webform_enhancements', 'footer_format', filter_default_format()),
+    '#description' => t('Enter the footer content to be displayed on the webform embed.'),
+  ];
+
+  $form['actions']['submit']['#submit'][] = 'coe_webform_enhancements_webform_settings_form_submit';
+}
+
+/**
+ * Submit handler for webform_settings_form, sets thirdPartySettings for individual webforms.
+ */
+function coe_webform_enhancements_webform_settings_form_submit($form, FormStateInterface $form_state) {
+  // Save the thirdPartySettings for the current webform.
+  $webform = $form_state->getFormObject()->getEntity();
+
+  $coe_webform_enhancements_values = $form_state->getValue('third_party_settings')['coe_webform_enhancements'];
+
+  $webform->setThirdPartySetting('coe_webform_enhancements', 'logo', $coe_webform_enhancements_values['webform_embed']['logo']);
+  $webform->setThirdPartySetting('coe_webform_enhancements', 'color_hex', $coe_webform_enhancements_values['webform_embed']['color_hex']);
+  $webform->setThirdPartySetting('coe_webform_enhancements', 'footer', $coe_webform_enhancements_values['webform_embed']['footer']['value']);
+  $webform->setThirdPartySetting('coe_webform_enhancements', 'footer_format', $coe_webform_enhancements_values['webform_embed']['footer']['format']);
+
+  $webform->save();
+}
+
+/**
+ * Adds the google_upload_status_element element to the webform if it has the "googlesheets_submissions" handler.
+ */
+function coe_webform_enhancements_add_google_upload_status_element(WebformInterface $webform) {
+  // Check if the webform has the "googlesheets_submissions" handler.
+  foreach ($webform->getHandlers() as $handler) {
+    if ($handler->getPluginId() == 'googlesheets_submissions') {
+      $googlesheets_submissions_handler = $handler;
+    }
+  }
+
+  $webform_elements = $webform->get('elements');
+
+  if (isset($googlesheets_submissions_handler)) {
+    if (!empty($webform_elements)) {
+      $no_field_added_yet = strpos($webform_elements, 'google_upload_status') === false;
+      if (!empty($webform_elements) && $no_field_added_yet) {
+        $elements = Yaml::decode($webform_elements);
+        $elements['google_upload_status'] = [
+          '#type' => 'google_upload_status_element',
+          '#title' => 'Google Upload Status',
+        ];
+        $webform->set('elements', Yaml::encode($elements));
+        $webform->save();
+      }
+    }
+  }
+  else {
+    // Remove the google_upload_status_element element from the webform if it exists and the webform doesn't have the "googlesheets_submissions" handler.
+    if (!empty($webform_elements)) {
+      $no_field_added_yet = strpos($webform_elements, 'google_upload_status') === false;
+      if (!empty($webform_elements) && !$no_field_added_yet) {
+        $elements = Yaml::decode($webform_elements);
+        unset($elements['google_upload_status']);
+        $webform->set('elements', Yaml::encode($elements));
+        $webform->save();
+      }
+    }
+  }
+}
+
+function coe_webform_enhancements_update_google_spreadsheet($webform) {
+  // Get the handlers of the webform.
+  $handlers = $webform->getHandlers();
+
+  // Check if the webform has the "googlesheets_submissions" handler.
+  foreach ($handlers as $handler) {
+    if ($handler->getPluginId() == 'googlesheets_submissions') {
+      // Get the configuration of the handler.
+      $configuration = $handler->getConfiguration();
+
+      // Get the spreadsheet id from the handler configuration.
+      $spreadsheet_id = $configuration['settings']['spreadsheet_id'];
+
+      if (isset($spreadsheet_id) && $spreadsheet_id != '') {
+
+        // Get the Google Sheets service.
+        $googleSheetsService = \Drupal::service('coe_webform_enhancements.google_sheets');
+        $googleSheetsService->setGoogleApiServiceClient($configuration['settings']['google_api_service_client_id']);
+
+        // Get the current columns in the spreadsheet.
+        $current_columns = $googleSheetsService->getNamedRanges($spreadsheet_id);
+
+        // Get the elements of the webform.
+        $webform_elements = getWebformElementsArray($webform, TRUE);
+
+        // Get the list of metadata keys that are included as columns.
+        $spreadsheet_submission_metadata_include = $configuration['settings']['spreadsheet_submission_metadata_include'];
+        $metadata_columns = array_filter(array_map('trim', explode("\n", $spreadsheet_submission_metadata_include)));
+        $metadata_columns = array_filter(array_map(fn($metadata_key) => explode('|', $metadata_key), $metadata_columns));
+        $metadata_columns = array_combine(array_column($metadata_columns, 0), array_column($metadata_columns, 1));
+        // Prefix every key with "metadata_".
+        $metadata_columns = array_combine(array_map(fn($key) => "metadata_{$key}", array_keys($metadata_columns)), $metadata_columns);
+
+        // Get the list of columns that are excluded.
+        $spreadsheet_column_exclude = array_filter(array_map('trim', explode(',', $configuration['settings']['spreadsheet_column_exclude'])));
+
+        // The final array of columns that should exist in the spreadsheet.
+        $spreadsheet_columns = array_merge($webform_elements, $metadata_columns);
+        $spreadsheet_columns = array_diff_key($spreadsheet_columns, array_flip($spreadsheet_column_exclude));
+
+        // Add columns if there aren't enough.
+        $column_count_difference = count($spreadsheet_columns) - $googleSheetsService->getColumnCount($spreadsheet_id);
+        if ($column_count_difference > 0) {
+          for ($i = 0; $i < $column_count_difference; $i++) {
+            // Add columns to the spreadsheet.
+            $googleSheetsService->addColumn($spreadsheet_id);
+          }
+        }
+
+        // Add columns that don't exist in the spreadsheet.
+        foreach ($spreadsheet_columns as $spreadsheet_column_key => $spreadsheet_column_value) {
+          if (!in_array($spreadsheet_column_key, $current_columns)) {
+
+            // Add a named range for the column.
+            $googleSheetsService->addColumnNamedRange($spreadsheet_id, $spreadsheet_column_key, count($current_columns));
+
+            $named_range_column_index = $googleSheetsService->getNamedRangeColumnIndex($spreadsheet_id, $spreadsheet_column_key);
+
+            // Add column to the spreadsheet.
+            $header_cell = [[
+              'column' => $named_range_column_index,
+              'row' => 1,
+              'value' => $spreadsheet_column_value,
+            ]];
+
+            // Update the first row of the column with the element name.
+            $googleSheetsService->updateCellValues($spreadsheet_id, $header_cell);
+
+            // Get the current columns in the spreadsheet.
+            $current_columns = $googleSheetsService->getNamedRanges($spreadsheet_id);
+          }
+        }
+
+        // Remove columns that should no longer exist in the spreadsheet.
+        foreach ($current_columns as $current_column_key) {
+          if (!array_key_exists($current_column_key, $spreadsheet_columns)) {
+            // Remove column from the spreadsheet.
+            // Get the range from the named range of the column.
+            $column_index = $googleSheetsService->getNamedRangeColumnIndex($spreadsheet_id, $current_column_key);
+
+            // Delete the named range.
+            $named_range_id = $googleSheetsService->getNamedRangeId($spreadsheet_id, $current_column_key);
+            $googleSheetsService->removeNamedRange($spreadsheet_id, $named_range_id);
+
+            // Delete the column.
+            $googleSheetsService->removeColumn($spreadsheet_id, $column_index);
+
+            // Get the current columns in the spreadsheet.
+            $current_columns = $googleSheetsService->getNamedRanges($spreadsheet_id);
+          }
+        }
+
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_webform_update().
+ */
+function coe_webform_enhancements_webform_update($webform) {
+  // Updated the Google Spreadsheet if the webform has the "googlesheets_submissions" handler.
+  coe_webform_enhancements_update_google_spreadsheet($webform);
+}
+
+/**
+ * Gets an associative array of webform elements, optionally flattened.
+ *
+ * @param \Drupal\webform\WebformInterface $webform
+ *   The webform entity.
+ * @param bool $flatten
+ *   (Optional) Whether to flatten the column names.
+ *
+ * @return array
+ *   An associative array of 'element_id' => 'element_name'.
+ */
+function getWebformElementsArray($webform, $flatten = FALSE) {
+  $webform_elements = $webform->getElementsInitializedFlattenedAndHasValue();
+
+  $webform_elements_array = [];
+  foreach ($webform_elements as $webform_element_id => $webform_element) {
+    if ($webform_element['#webform_composite']) {
+      foreach ($webform_element['#webform_composite_elements'] as $webform_element_composite_element_id => $webform_element_composite_element) {
+        $webform_element_composite_id = "{$webform_element_id}__{$webform_element_composite_element_id}";
+        $webform_elements_array[$webform_element_id][$webform_element_composite_id] = $webform_element_composite_element['#title'];
+      }
+    }
+    else {
+      $webform_elements_array[$webform_element_id] = $webform_element['#title'];
+    }
+  }
+
+  return $flatten ? flattenArray($webform_elements_array) : $webform_elements_array;
+}
+
+/**
+ * Flattens a multi-dimensional array into a single-dimensional array.
+ *
+ * @param array $array
+ *   The multi-dimensional array to flatten.
+ *
+ * @return array
+ *   The flattened array.
+ */
+function flattenArray($array) {
+  $flat_array = [];
+  array_walk_recursive($array, function ($value, $key) use (&$flat_array) {
+    $flat_array[$key] = $value;
+  });
+
+  return $flat_array;
+}
+

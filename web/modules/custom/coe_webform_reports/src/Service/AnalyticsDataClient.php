@@ -2,6 +2,7 @@
 
 namespace Drupal\coe_webform_reports\Service;
 
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Google\Analytics\Data\V1beta\BetaAnalyticsDataClient;
 use Google\Analytics\Data\V1beta\DateRange;
@@ -40,6 +41,13 @@ class AnalyticsDataClient {
   protected $logger;
 
   /**
+   * The configuration factory.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  /**
    * Constructs a new AnalyticsDataClient object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -47,27 +55,33 @@ class AnalyticsDataClient {
    * @param $google_api_client
    *   The Google API Service Client.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, $google_api_client, LoggerInterface $logger) {
+  public function __construct(
+    EntityTypeManagerInterface $entity_type_manager,
+    $google_api_client,
+    LoggerInterface $logger,
+    ConfigFactoryInterface $config_factory
+  ) {
     $this->googleApiClientStorage = $entity_type_manager->getStorage('google_api_service_client');
     $this->googleApiClient = $google_api_client;
     $this->logger = $logger;
+    $this->configFactory = $config_factory;
   }
 
   /**
-   * Example service method.
+   * Get webform view count from Google Analytics 4.
    *
    * @return integer
    *   A sample result.
    */
   public function getViewCount($webform_id) {
 
-      $google_api_service_client = $this->googleApiClientStorage->load('ga4');
+    $google_api_service_client = $this->getGA4ServiceClient();
+
+    if ($google_api_service_client) {
       // Set the account.
       $this->googleApiClient->setGoogleApiClient($google_api_service_client);
       $creds = $this->googleApiClient->googleApiServiceClient->getAuthConfig();
-
-      // Replace with your view ID, for example XXXX.
-      $propertyId = "413264721";
+      $propertyId = $this->configFactory->get('coe_webform_reports.settings')->get('ga4_property_id');
 
       $client = new BetaAnalyticsDataClient(['credentials' => $creds]);
 
@@ -81,27 +95,15 @@ class AnalyticsDataClient {
       $dimensions = [new Dimension(['name' => 'contentId'])];
       $metrics = [new Metric(['name' => 'eventCount'])];
 
-      // Set the specific contentId you want to filter by.
-      $specificContentId = 'webform-submission-contact-add-form';
-
-//      // Will return the sum of those two
-//      $dimensionFilter = new FilterExpression([
-//        'filter' => new Filter([
-//          'field_name' => 'pagePath',
-//          'in_list_filter' => new inListFilter([
-//            'values' => ['/form/test', '/form/contact']
-//          ])
-//        ])
-//      ]);
-
-//      $dimensionFilter = new FilterExpression([
-//        'filter' => new Filter([
-//          'field_name' => 'contentId',
-//          'string_filter' => new stringFilter([
-//            'value' => 'webform-submission-contact-add-form'
-//          ])
-//        ])
-//      ]);
+  //      // Will return the sum of those two
+  //      $dimensionFilter = new FilterExpression([
+  //        'filter' => new Filter([
+  //          'field_name' => 'pagePath',
+  //          'in_list_filter' => new inListFilter([
+  //            'values' => ['/form/test', '/form/contact']
+  //          ])
+  //        ])
+  //      ]);
 
       $dimensionFilter = new FilterExpression([
         'filter' => new Filter([
@@ -116,12 +118,13 @@ class AnalyticsDataClient {
         $response = $client->runReport([
           'property' => 'properties/' . $propertyId,
           'dateRanges' => [$dateRange],
-//    'dimensions' => $dimensions,
+  //    'dimensions' => $dimensions,
           'metrics' => $metrics,
           'dimensionFilter' => $dimensionFilter,
         ]);
       }
       catch (\Exception $e) {
+        $client->close();
         $this->logger->error('Error retrieving view count from GA4 API: @message', [
           '@message' => $e->getMessage(),
         ]);
@@ -133,9 +136,35 @@ class AnalyticsDataClient {
           $count = $row->getMetricValues()[0]->getValue();
         }
         $client->close();
-        return $count;
+        return $count ?? 0;
       }
+    }
 
+  }
+
+  /**
+   * Gets the Google Analytics 4 (GA4) service client entity.
+   *
+   * This method retrieves entities from the google_api_service_client
+   * storage and returns the first entity that has the 'analyticsdata' service
+   * enabled.
+   *
+   * @return \Drupal\google_api_service_client\Entity\GoogleApiServiceClientEntity|NULL
+   *   The GA4 service client entity if found; otherwise, NULL.
+   */
+  public function getGA4ServiceClient() {
+    $entities = $this->googleApiClientStorage->loadMultiple();
+
+    foreach ($entities as $entity) {
+      // Check if the entity has 'analyticsdata' service enabled.
+      if (!empty($entity->getServices()['analyticsdata'])) {
+        // Return the first entity that matches the criteria.
+        return $entity;
+      }
+    }
+
+    // Return NULL if no matching entity is found.
+    return NULL;
   }
 
 }

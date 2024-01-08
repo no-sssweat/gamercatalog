@@ -1,7 +1,23 @@
 coe_webform_reports.page:
-  path: '/admin/reports-page/{webform}'
+  path: '/admin/structure/webform/manage/{webform}/results/submissions'
   defaults:
     _controller: '\Drupal\coe_webform_reports\Controller\ReportsPage::content'
     _title: 'Submission Reports Page'
   requirements:
-    _permission: 'access content'
+    _permission: 'webform.update'
+
+coe_webform_reports.page.csv:
+  path: '/admin/structure/webform/manage/{webform}/results/submissions/csv'
+  defaults:
+    _controller: '\Drupal\coe_webform_reports\Controller\ReportsPageCSV::content'
+    _title: 'Submission Reports Page CSV'
+  requirements:
+    _permission: 'webform.update'
+
+coe_webform_reports.settings:
+  path: '/admin/config/coe-webform-reports'
+  defaults:
+    _form: '\Drupal\coe_webform_reports\Form\WebformReportsConfig'
+    _title: 'Webform Reports Configuration'
+  requirements:
+    _permission: 'administer site configuration'

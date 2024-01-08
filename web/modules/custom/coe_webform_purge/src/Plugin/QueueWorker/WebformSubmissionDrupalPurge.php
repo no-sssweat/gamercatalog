@@ -2,12 +2,10 @@
 
 namespace Drupal\coe_webform_purge\Plugin\QueueWorker;
 
-use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\coe_webform_purge\Service\WebformSubmissionPurge;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Queue\QueueFactory;
 use Drupal\Core\Queue\QueueWorkerBase;
-use Drupal\webform\WebformSubmissionInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -36,11 +34,11 @@ class WebformSubmissionDrupalPurge extends QueueWorkerBase implements ContainerF
   protected $entityTypeManager;
 
   /**
-   * The config factory service.
+   * The webform submission purge service.
    *
-   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   * @var \Drupal\coe_webform_purge\Service\WebformSubmissionPurge
    */
-  protected $configFactory;
+  protected $webformSubmissionPurge;
 
   /**
    * Constructs a WebformSubmissionCleaner worker.
@@ -49,17 +47,16 @@ class WebformSubmissionDrupalPurge extends QueueWorkerBase implements ContainerF
    * @param string $plugin_id
    * @param mixed $plugin_definition
    * @param \Drupal\Core\Queue\QueueFactory $queue_factory
+   * @param \Drupal\coe_webform_purge\Service\WebformSubmissionPurge $webform_submission_purge
    */
   public function __construct(array $configuration,
                               $plugin_id,
                               $plugin_definition,
                               QueueFactory $queue_factory,
-                              EntityTypeManagerInterface $entity_type_manager,
-                              ConfigFactoryInterface $config_factory) {
+                              WebformSubmissionPurge $webform_submission_purge) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->queueFactory = $queue_factory;
-    $this->entityTypeManager = $entity_type_manager;
-    $this->configFactory = $config_factory;
+    $this->webformSubmissionPurge = $webform_submission_purge;
   }
 
   /**
@@ -71,8 +68,7 @@ class WebformSubmissionDrupalPurge extends QueueWorkerBase implements ContainerF
       $plugin_id,
       $plugin_definition,
       $container->get('queue'),
-      $container->get('entity_type.manager'),
-      $container->get('config.factory')
+      $container->get('coe_webform_purge.submission')
     );
   }
 
@@ -80,28 +76,24 @@ class WebformSubmissionDrupalPurge extends QueueWorkerBase implements ContainerF
    * {@inheritdoc}
    */
   public function processItem($data) {
-    $sid = isset($data->id) && $data->id ? $data->id : NULL;
-    if (!$sid) {
+    $wsid = isset($data->wsid) && $data->wsid ? $data->wsid : NULL;
+    if (!$wsid) {
       throw new \Exception('Missing Webform Submission ID');
     }
 
-    // Check if the item is scheduled for execution.
-    $current_time = time();
-    $webform_created_date = $data->created;
-    $config_name = 'coe_webform_purge.' . $data->webform_id;
-    $config = $this->configFactory->get($config_name);
-    if ($config->get('purging_enabled')) {
+    $webform_id = $data->webform_id;
+    $needs_purging = $this->webformSubmissionPurge->needsPurging($webform_id);
+    if ($needs_purging) {
+      $config = $this->webformSubmissionPurge->getConfig($webform_id);
       $freq_number = $config->get('frequency_number');
       $freq_type = $config->get('frequency_type');
+      // Check if the item is scheduled for purging.
+      $current_time = time();
+      $webform_created_date = $data->created;
       $webform_deletion_date = strtotime("+$freq_number $freq_type", $webform_created_date);
       // Delete webform when it's time.
       if ($current_time >= $webform_deletion_date) {
-        $webform_submission = $this->entityTypeManager
-          ->getStorage('webform_submission')
-          ->load($sid);
-        if ($webform_submission instanceof WebformSubmissionInterface) {
-          $webform_submission->delete();
-        }
+        $this->webformSubmissionPurge->deleteWebformSubmissionFromDrupal($wsid);
       }
       else {
         // Not time to delete yet, re-add to the queue.

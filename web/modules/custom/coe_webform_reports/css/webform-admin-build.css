@@ -1,0 +1,9 @@
+tr[data-webform-key="completion_time"],
+tr[data-webform-key="google_upload_status"],
+tr[data-webform-key="submission_pdf"] {
+  display: none;
+}
+/*Hide the table required checkbox since it doesn't work properly.*/
+tr[data-webform-type="webform_table"] .form-type-checkbox {
+  display: none;
+}

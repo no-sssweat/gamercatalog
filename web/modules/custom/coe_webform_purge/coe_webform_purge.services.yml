@@ -1,4 +1,4 @@
 services:
   coe_webform_purge.submission:
     class: 'Drupal\coe_webform_purge\Service\WebformSubmissionPurge'
-    arguments: ['@queue']
+    arguments: ['@queue', '@entity_type.manager', '@config.factory']

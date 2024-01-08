@@ -1,0 +1,18 @@
+.button--download {
+  position: absolute !important;
+  right: 50px !important;
+  font-size: 11px !important;
+}
+
+.seven-details {
+  display: block;
+}
+
+.seven-details .form-item {
+  display: inline-block;
+  float: none !important;
+}
+
+.view-filters {
+  padding-top: 10px;
+}

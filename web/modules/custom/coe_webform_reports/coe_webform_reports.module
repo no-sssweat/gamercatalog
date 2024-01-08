@@ -7,6 +7,15 @@
  */
 
 use Drupal\Component\Serialization\Yaml;
+use Drupal\Component\Utility\NestedArray;
+use Drupal\Component\Utility\UrlHelper;
+use Drupal\Component\Utility\Xss;
+use Drupal\Core\Cache\Cache;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Link;
+use Drupal\Core\Render\Markup;
+use Drupal\Core\Url;
 use Drupal\views\ViewExecutable;
 use Drupal\webform\WebformInterface;
 use Drupal\webform\WebformSubmissionInterface;
@@ -27,7 +36,9 @@ use Google\Analytics\Data\V1beta\BetaAnalyticsDataClient;
  */
 function coe_webform_reports_process_webform_install_batch($webform, &$context) {
   coe_webform_pdf_add_completion_time_field($webform);
-  coe_webform_pdf_add_google_sheets_url_field($webform);
+  // Add Webforms to custom table
+  $view_count_service = \Drupal::service('coe_webform_reports.view_count');
+  $view_count_service->onWebformCreate($webform);
 }
 
 /**
@@ -49,6 +60,46 @@ function coe_webform_reports_batch_finished($success, $results, $operations) {
  */
 function coe_webform_reports_form_alter(&$form, &$form_state, $form_id) {
 
+  if ($form_id == 'webform_edit_form') {
+    $form['#attached']['library'][] = 'coe_webform_reports/webform-admin-build';
+  }
+
+  if ($form_id == 'views_exposed_form') {
+    $route_match = \Drupal::routeMatch();
+    $webform_id = $route_match->getParameter('webform');
+    if ($webform_id) {
+      // Hide these filters when Webforms can't create a draft.
+      if (_no_webform_draft($webform_id)) {
+        $form['changed_wrapper']['#access'] = FALSE;
+        $form['created_wrapper']['#access'] = FALSE;
+      }
+      $form['actions']['submit']['#value'] = t('Filter');
+      $form['actions']['submit']['#attributes']['class'][] = 'button';
+      $form['actions']['submit']['#attributes']['class'][] = 'button--primary';
+      if (!empty($form['completed_wrapper'])) {
+        $current_request = \Drupal::request();
+        $date_fields = [
+          'created',
+          'changed',
+          'completed',
+        ];
+        foreach ($date_fields as $date_field) {
+          $form[$date_field . '_wrapper'][$date_field]['min']['#title'] = t('Start date');
+          $form[$date_field . '_wrapper'][$date_field]['max']['#title'] = t('End date');
+          $form[$date_field . '_wrapper'][$date_field]['min']['#placeholder'] = t('MM/DD/YYYY');
+          $form[$date_field . '_wrapper'][$date_field]['max']['#placeholder'] = t('MM/DD/YYYY');
+          $form[$date_field . '_wrapper']['#type'] = 'details';
+          $form[$date_field . '_wrapper']['#open'] = FALSE;
+          // Want to make it open if the filter field is being used.
+          $param_value = $current_request->query->get($date_field);
+          if (!empty($param_value['min']) || !empty($param_value['max'])) {
+            $form[$date_field . '_wrapper']['#open'] = TRUE;
+          }
+        }
+      }
+    }
+  }
+
 //  _api_test();
 
   // Note: Could not do this in submit handler due to AJAX nor in hook_entity_insert().
@@ -60,15 +111,7 @@ function coe_webform_reports_form_alter(&$form, &$form_state, $form_id) {
   if (in_array($form_id, $form_ids)) {
     $webform = $form_state->getFormObject()->getEntity();
     coe_webform_pdf_add_completion_time_field($webform);
-    coe_webform_pdf_add_google_sheets_url_field($webform);
   }
-
-//  // is a webform submission add form
-//  if (strpos($form_id, 'webform_submission') !== false
-//    && strpos($form_id, 'add_form') !== false) {
-//    // hide the Google Sheets URL field
-//    $form['elements']['google_sheets_url']['#access'] = FALSE;
-//  }
 
 }
 
@@ -78,6 +121,53 @@ function coe_webform_reports_form_alter(&$form, &$form_state, $form_id) {
 function coe_webform_reports_webform_insert(WebformInterface $webform) {
   $view_count_service = \Drupal::service('coe_webform_reports.view_count');
   $view_count_service->onWebformCreate($webform);
+}
+
+/**
+ * Implements hook_webform_submission_insert().
+ */
+function coe_webform_reports_webform_submission_insert(WebformSubmissionInterface $webform_submission) {
+  $completion_time = $webform_submission->getElementData('completion_time');
+  $webform_id = $webform_submission->getWebform()->id();
+  $view_count_service = \Drupal::service('coe_webform_reports.view_count');
+  $view_count_service->increaseTotalSubmissions($webform_id);
+  $view_count_service->increaseTotalTime($webform_id, $completion_time);
+  $view_count_service->updateAverageTime($webform_id);
+
+  // Flush the specific report cache
+  $cache_key = 'coe_webform_reports:' . $webform_id;
+  \Drupal::cache()->delete($cache_key);
+}
+
+/**
+ * Implements hook_webform_submission_delete().
+ */
+function coe_webform_reports_webform_submission_delete(WebformSubmissionInterface $webform_submission) {
+  $completion_time = $webform_submission->getElementData('completion_time');
+  $webform_id = $webform_submission->getWebform()->id();
+  $view_count_service = \Drupal::service('coe_webform_reports.view_count');
+  $view_count_service->decreaseTotalSubmissions($webform_id);
+  $view_count_service->decreaseTotalTime($webform_id, $completion_time);
+  $view_count_service->updateAverageTime($webform_id);
+
+  // Flush the specific report cache
+  $cache_key = 'coe_webform_reports:' . $webform_id;
+  \Drupal::cache()->delete($cache_key);
+
+  // Remove from sheets
+  $wsid = $webform_submission->id();
+  $google_sheets_service = \Drupal::service('coe_webform_enhancements.google_sheets');
+  $google_sheets_authenticated = $google_sheets_service->googleSheetsAuth($webform_id);
+  if ($google_sheets_authenticated) {
+    $spreadsheet_id = $google_sheets_service->getSpreadsheetID($webform_id);
+    $response = $google_sheets_service->removeWebformSubmissionRowAndFiles($webform_submission);
+    if ($response) {
+      \Drupal::logger('coe_webform_reports')->notice(t('@wsid was successfully deleted from Google Sheet with ID of: @id', [
+        '@wsid' => $wsid,
+        '@id' => $spreadsheet_id,
+      ]));
+    }
+  }
 }
 
 /**
@@ -92,7 +182,7 @@ function _api_test() {
 //  ksm($analytics);
   // Call the Analytics Reporting API V4.
   $response = _getReport();
-  ksm($response);
+//  ksm($response);
 
 //  $propertyId = 'your-property-id'; // Replace with your GA4 property ID.
 //  $dateRange = new Google_Service_AnalyticsData_DateRange();
@@ -179,7 +269,7 @@ function _getReport() {
 }
 
 /**
- * Adds a submission_pdf field to the webform if it doesn't exist already.
+ * Adds a completion_time field to the webform if it doesn't exist already.
  *
  * @return void
  * @throws \Drupal\Core\Entity\EntityStorageException
@@ -192,32 +282,8 @@ function coe_webform_pdf_add_completion_time_field(WebformInterface $webform) {
       $elements = Yaml::decode($webform_elements);
       // add the field
       $elements['completion_time'] = [
-        '#type' => 'textfield',
+        '#type' => 'completion_time_element',
         '#title' => 'Completion Time',
-      ];
-      $webform->set('elements', Yaml::encode($elements));
-      $webform->save();
-    }
-  }
-}
-
-/**
- * Adds a submission_pdf field to the webform if it doesn't exist already.
- *
- * @return void
- * @throws \Drupal\Core\Entity\EntityStorageException
- */
-function coe_webform_pdf_add_google_sheets_url_field(WebformInterface $webform) {
-  $webform_elements = $webform->get('elements');
-  if (!empty($webform_elements)) {
-    $no_field_added_yet = strpos($webform_elements, "google_sheets_url") === false;
-    if (!empty($webform_elements) && $no_field_added_yet) {
-      $elements = Yaml::decode($webform_elements);
-      // add the field
-      $elements['google_sheets_url'] = [
-        '#type' => 'webform_link',
-        '#title' => 'Google Sheets URL',
-        '#title__access' => false,
       ];
       $webform->set('elements', Yaml::encode($elements));
       $webform->save();
@@ -255,6 +321,406 @@ function coe_webform_reports_preprocess_webform__reports_template(&$variables) {
   $variables['webform_id'] = $webform_id;
 }
 
+/**
+ * Adds two new columns.
+ */
+function coe_webform_reports_update_9001(&$sandbox) {
+  $updates = [];
+
+  // Define the schema for the new columns.
+  $schema = [
+    'total_submissions' => [
+      'type' => 'int',
+      'length' => 11,
+      'unsigned' => TRUE,
+      'not null' => TRUE,
+      'default' => 0,
+      'description' => 'Number of submissions integer field',
+    ],
+    'total_time' => [
+      'type' => 'int',
+      'length' => 11,
+      'unsigned' => TRUE,
+      'not null' => TRUE,
+      'default' => 0,
+      'description' => 'Total completion time',
+    ],
+    'average_time' => [
+      'type' => 'int',
+      'length' => 11,
+      'unsigned' => TRUE,
+      'not null' => TRUE,
+      'default' => 0,
+      'description' => 'Average completion time',
+    ],
+  ];
+
+  // Add the new columns to the specified table.
+  $table_name = 'coe_webform_reports_view_count';
+  $database = \Drupal\Core\Database\Database::getConnection();
+
+  foreach ($schema as $column_name => $column_definition) {
+    $exists = $database->schema()->fieldExists($table_name, $column_name);
+    if (!$exists) {
+      $database->query("ALTER TABLE {" . $table_name . "} ADD COLUMN " . $column_name . " INT NOT NULL DEFAULT 0");
+    }
+  }
+
+  // Add indexes to the new columns.
+  $indexes = [
+    'total_submissions' => ['total_submissions'],
+    'total_time' => ['total_time'],
+    'average_time' => ['average_time'],
+  ];
+
+  foreach ($indexes as $index_name => $columns) {
+    if (!$database->schema()->indexExists($table_name, $index_name)) {
+      $database->query("CREATE INDEX " . $index_name . " ON {" . $table_name . "} (" . implode(', ', $columns) . ")");
+    }
+  }
+
+  return $updates;
+}
+
+/**
+ * Adds default value for type column.
+ */
+function coe_webform_reports_update_9002(&$sandbox) {
+  // Define the batch process.
+  $batch = [
+    'title' => t('Processing Webforms'),
+    'operations' => [],
+    'finished' => 'coe_webform_pdf_batch_finished',
+  ];
+
+  // Load all webforms and add them to the batch.
+  $webforms = \Drupal::entityTypeManager()
+    ->getStorage('webform')
+    ->loadMultiple();
+
+  foreach ($webforms as $webform) {
+    $batch['operations'][] = [
+      'coe_webform_reports_process_webform_install_batch',
+      [$webform],
+    ];
+  }
+
+  // Start the batch process.
+  batch_set($batch);
+}
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function coe_webform_reports_entity_type_alter(array &$entity_types) {
+  if (isset($entity_types['webform'])) {
+    $entity_types['webform']->setListBuilderClass('Drupal\coe_webform_reports\WebformReportsListBuilder');
+  }
+}
+
+/**
+ * Implements hook_webform_base_table_info_alter().
+ */
+function coe_webform_webform_base_table_info_alter(array &$base_table_definitions, EntityTypeInterface $entity_type) {
+  if ($entity_type->id() == 'webform') {
+    $fields = &$base_table_definitions['webform']['fields'];
+
+    // Add your custom field definition.
+    $fields['total_views'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Total Views'))
+      ->setDescription(t('Total views for webform.'));
+  }
+}
+
+/**
+ * Implements hook_local_tasks_alter().
+ */
+function coe_webform_reports_local_tasks_alter(&$local_tasks) {
+  if (isset($local_tasks['entity.webform.results_submissions'])) {
+    $local_tasks['entity.webform.results_submissions']['route_name'] = 'coe_webform_reports.page';
+  }
+}
+
+/**
+ * Implements hook_preprocess_HOOK().
+ */
+function coe_webform_reports_preprocess_entity_print(array &$variables) {
+  $webform_submission = _webform_entity_print_preprocess_entity_print_get_webform_submission($variables['content']);
+  if (!$webform_submission) {
+    return;
+  }
+
+  // remove the completion time field
+  $data = $webform_submission->getData();
+  unset($data['completion_time']);
+  $webform_submission->setData($data);
+
+  // Add webform submission to variables.
+  $variables['webform_submission'] = $webform_submission;
+
+  $css = [];
+
+  $webform = $webform_submission->getWebform();
+  // Add webform CSS.
+  $assets = $webform->getAssets();
+  if ($assets['css']) {
+    $css[] = $assets['css'];
+  }
+
+  // Add webform entity print CSS.
+  /** @var \Drupal\webform\WebformThirdPartySettingsManagerInterface $third_party_settings_manager */
+  $third_party_settings_manager = \Drupal::service('webform.third_party_settings_manager');
+  // Append default print template CSS.
+  $default_template = $third_party_settings_manager->getThirdPartySetting('webform_entity_print', 'template') ?: [];
+  if (!empty($default_template['css'])) {
+    $css[] = $default_template['css'];
+  }
+
+  // Append webform print template CSS.
+  $webform_template = $webform->getThirdPartySetting('webform_entity_print', 'template') ?: [];
+  if (!empty($webform_template['css'])) {
+    $css[] = $webform_template['css'];
+  }
+
+  // Append a style tag to entity print CSS link tags.
+  $variables['entity_print_css'] = Markup::create(
+    $variables['entity_print_css'] . PHP_EOL .
+    '<style type="text/css" media="all">' . PHP_EOL .
+    implode(PHP_EOL, $css) . PHP_EOL .
+    '</style>' . PHP_EOL
+  );
+
+  // Append webform entity print image token to all files in the rendered
+  // webform submission data.
+  // NOTE: We are always rendering the webform submission data so that
+  // value is consistent.
+  // @see webform_entity_print_webform_submission_access();
+  $content =& NestedArray::getValue($variables, ['content', 0, 0]);
+  if (!$content) {
+    $content =& NestedArray::getValue($variables, ['content', 0]);
+  }
+
+  // Make absolute sure we are rendering and altering
+  // the webform submission data.
+  if (!$content
+    || !is_array($content)
+    || !isset($content['#theme'])
+    || $content['#theme'] !== 'webform_submission_data') {
+    return;
+  }
+
+  $webform_id = $webform->id();
+  $sid = $webform_submission->id();
+
+  // Render the webform submission data.
+  $html = (string) \Drupal::service('renderer')->render($content);
+
+  // Only matching <img src=""/webform/sid/*>.
+  if (preg_match_all('#(src\s*=\s*")([^"]+(?:/private|/system/files)/webform/' . $webform_id . '/' . $sid . '/[^"]+)#', $html, $matches)) {
+    foreach ($matches[2] as $index => $found_uri) {
+      $token_query = [WEBFORM_ENTITY_PRINT_IMAGE_TOKEN => _webform_entity_print_token_generate($found_uri)];
+      $replace_uri = $found_uri . (strpos($found_uri, '?') !== FALSE ? '&' : '?') . UrlHelper::buildQuery($token_query);
+      $html = str_replace($matches[0][$index], $matches[1][$index] . $replace_uri, $html);
+    }
+  }
+
+  // Only matching <img src=""/webform/signature_element_key/>.
+  $elements = $webform->getElementsDecodedAndFlattened();
+  $signature_elements = [];
+  foreach ($elements as $element_key => $element) {
+    if (isset($element['#type']) && $element['#type'] === 'webform_signature') {
+      $signature_elements[] = $element_key;
+    }
+  }
+  if ($signature_elements && preg_match_all('#(src\s*=\s*")([^"]+(?:/private|/system/files)/webform/' . $webform_id . '/(?:' . implode('|', $signature_elements) . ')/[^"]+)#', $html, $matches)) {
+    foreach ($matches[2] as $index => $found_uri) {
+      $token_query = [WEBFORM_ENTITY_PRINT_IMAGE_TOKEN => _webform_entity_print_token_generate($found_uri)];
+      $replace_uri = $found_uri . (strpos($found_uri, '?') !== FALSE ? '&' : '?') . UrlHelper::buildQuery($token_query);
+      $html = str_replace($matches[0][$index], $matches[1][$index] . $replace_uri, $html);
+    }
+  }
+
+  $webform_id = $webform->id();
+  // remove the Google sheets url
+  $html = str_replace('<div class="webform-element webform-element-type-webform-link js-form-item form-item js-form-type-item form-type-item js-form-item-google-sheets-url form-item-google-sheets-url" id="' . $webform_id . '--google_sheets_url">
+      <label>Google Sheets URL</label>
+        {Empty}
+        </div>', '', $html);
+
+  // remove completion time
+  $html = str_replace('<div class="webform-element webform-element-type-completion-time-element js-form-item form-item js-form-type-item form-type-item js-form-item-completion-time form-item-completion-time" id="' . $webform_id . '--completion_time">
+      <label>Completion Time</label>
+        {Empty}
+        </div>', '', $html);
+
+
+  $webform_submission_purge = \Drupal::service('coe_webform_purge.submission');
+  $webform_id = $webform->id();
+  $spreadsheet_id = $webform_submission_purge->getSpreadSheetID($webform_id);
+  if ($spreadsheet_id) {
+    $google_sheets_service = \Drupal::service('coe_webform_enhancements.google_sheets');
+    $google_sheets_authenticated = $google_sheets_service->googleSheetsAuth($webform_id);
+    if ($google_sheets_authenticated) {
+      $wsid = $webform_submission->id();
+      $row_index = $google_sheets_service->getRowIndexByMetadata($spreadsheet_id, 'submission_id', $wsid);
+      $values = $google_sheets_service->getRowValues($spreadsheet_id, $row_index);
+      $labels = $google_sheets_service->getRowValues($spreadsheet_id, 0);
+
+      $html = '';
+      foreach ($labels[0] as $key => $label) {
+        if ($label == 'Submission PDF' || $label == 'Completion Time') {
+          // skip these fields.
+          continue;
+        }
+        $html .= "<p></p><strong>$label</strong></p>";
+        if (!empty($values[0][$key])) {
+          $value = $values[0][$key];
+          $html .= "<p>$value</p>";
+        } else {
+          $html .= "<p>{Empty}</p>";
+        }
+      }
+    }
+  }
+
+  // The HTML markup is safe because it has already been rendered.
+  $content = [
+    '#markup' => Markup::create($html),
+  ];
+}
+
+/**
+ * Implements hook_views_pre_render().
+ */
 function coe_webform_reports_views_pre_render(ViewExecutable $view) {
-//  ksm($view);
+  if ($view->id() == 'webform_report' && $view->current_display == 'block_1') {
+    if (!empty($view->result[0]->_entity)) {
+      $webform_submission = $view->result[0]->_entity;
+      $webform_id = $webform_submission->getWebform()->id();
+      // Hide these filters when webforms can't create a draft.
+      if (_no_webform_draft($webform_id)) {
+        // Exclude a specific field from display.
+        $view->display_handler->getHandler('field', 'changed')->options['exclude'] = TRUE;
+        $view->display_handler->getHandler('field', 'created')->options['exclude'] = TRUE;
+      }
+    }
+  }
+}
+
+/**
+ * Checks if a Webform has draft functionality disabled.
+ *
+ * @param string $webform_id
+ *   The machine name or UUID of the Webform.
+ *
+ * @return bool
+ *   TRUE if the Webform has draft functionality disabled ('none'),
+ *   otherwise FALSE.
+ */
+function _no_webform_draft($webform_id) {
+  $config_name = 'webform.webform.' . $webform_id;
+  $config = \Drupal::config($config_name);
+  $draft_value = $config->getRawData()['settings']['draft'];
+  return ($draft_value == 'none') ? TRUE : FALSE;
+}
+
+/*
+ * Implements hook_preprocess_HOOK().
+ */
+function coe_webform_reports_preprocess_views_view_table(&$vars) {
+  if (isset($vars['view']) && ($vars['view']->id() == 'webform_report')
+    && ($vars['view']->current_display == 'block_1') && !empty($vars['view']->result[0]->_entity)) {
+
+    $webform_submission = $vars['view']->result[0]->_entity;
+    $webform_id = $webform_submission->getWebform()->id();
+    // Check if data is already in cache.
+    $cache_key = 'coe_webform_reports:' . $webform_id;
+    if ($cache = \Drupal::cache()->get($cache_key)) {
+      // Use cached data.
+      $vars['rows'] = $cache->data;
+    }
+    else {
+      $sheetsService = \Drupal::service('coe_webform_enhancements.google_sheets');
+      $spreadsheet_id = $sheetsService->getSpreadsheetID($webform_id);
+      $google_sheets_authenticated = $sheetsService->googleSheetsAuth($webform_id);
+
+      if ($google_sheets_authenticated) {
+        $field_keys = _get_view_webform_fields_keys($vars['view']);
+        foreach ($vars['rows'] as $row_key => $row_val) {
+          $webform_submission = $vars['view']->result[$row_key]->_entity;
+          $wsid = $webform_submission->id();
+          $row_index = $sheetsService->getRowIndexByMetadata($spreadsheet_id, 'submission_id', $wsid);
+          $named_val = $sheetsService->getRowNamedRangeValues($spreadsheet_id, $row_index);
+          // remove the completion time as value is already in Drupal.
+          unset($named_val['completion_time']);
+          foreach ($named_val as $name_val_key => $named_val_value) {
+            // skip metadata fields
+            if (strpos($name_val_key, 'metadata') !== false) {
+              continue;
+            }
+            // skip empty values
+            if (empty($named_val_value)) {
+              continue;
+            }
+            $vars['rows'][$row_key]['columns'][$field_keys[$name_val_key]]['content'][0]['field_output']['#markup'] = _format_output($named_val_value);
+          }
+        }
+        // Cache the data.
+        \Drupal::cache()->set($cache_key, $vars['rows'], Cache::PERMANENT);
+      }
+    }
+  }
+}
+
+/**
+ * Retrieves the keys of webform fields from a View.
+ *
+ * This function iterates through the fields of a View and identifies those
+ * related to webform submissions by checking for the presence of
+ * 'webform_submission' in the field key. It then associates the webform field
+ * name with its corresponding View field key.
+ *
+ * @param \Drupal\views\ViewExecutable $view
+ *   The View object from which to extract webform field keys.
+ *
+ * @return array
+ *   An associative array where the keys are webform field names and the values
+ *   are their corresponding View field keys.
+ */
+function _get_view_webform_fields_keys(ViewExecutable $view) {
+  $key_names = [];
+  foreach ($view->field as $view_field_key => $view_field_content) {
+    // Has webform_submission as part of the key name
+    if (strpos($view_field_key, 'webform_submission') !== false) {
+      $webform_field_name = $view_field_content->definition['webform_submission_field'];
+      $key_names[$webform_field_name] = $view_field_key;
+    }
+  }
+  // Remove the first key as we don't want it.
+  array_shift($key_names);
+
+  return $key_names;
+}
+
+/**
+ * Helper function to create an anchor link with target="_blank".
+ *
+ * @param string $string
+ *   The input string
+ *
+ * @return \Drupal\Core\Render\Markup|string
+ *   The rendered anchor link or the original string if it doesn't start with "https://".
+ */
+function _format_output($string) {
+  $string = Xss::filter($string);
+  // Check if the string starts with "https://"
+  if (strpos($string, 'https://') === 0) {
+    // If it does, create an anchor link with target="_blank"
+    $output = '<a href="' . $string . '" target="_blank">' . $string . '</a>';
+  } else {
+    // If it doesn't start with "https://", leave the string as is
+    $output = $string;
+  }
+
+  return $output;
 }

@@ -1,0 +1,24 @@
+{#
+/**
+ * @file
+ * Webform Embed Page template overide.
+ */
+#}
+
+<div class="webform-embed">
+  {% if logo_url %}
+    <header class="webform-embed--header" style="background-color: #{{ color_hex }}">
+      <img class="webform_embed_logo" src="{{ logo_url }}" alt="Logo">
+    </header>
+  {% endif %}
+  
+  <main class="webform-embed--main">
+    {{ webform_output }}
+  </main>
+
+  {% if footer %}
+    <div class="webform-embed--footer">
+      {{ footer }}
+    </div>
+  {% endif %}
+</div>
