@@ -1,4 +1,4 @@
-uuid: d7cba24b-a60e-4aff-9e8b-d91b0c77be11
+uuid: 223be658-f728-4bc9-824f-f46deab2a60f
 langcode: en
 status: open
 dependencies: {  }
@@ -8,30 +8,19 @@ close: null
 uid: 1
 template: false
 archive: false
-id: test2
-title: test2
+id: demo
+title: demo
 description: ''
 category: ''
-elements: |
-  wee:
-    '#type': textarea
-    '#title': wee
+elements: |-
+  name:
+    '#type': textfield
+    '#title': Name
+    '#placeholder': Name
   submission_pdf:
     '#type': 'webform_entity_print_attachment:pdf'
     '#title': 'Submission PDF'
     '#filename': '[webform:title]-submission-[webform_submission:sid].pdf'
-  page2:
-    '#type': webform_wizard_page
-    '#title': page2
-    test:
-      '#type': textarea
-      '#title': test
-  page3:
-    '#type': webform_wizard_page
-    '#title': page3
-    www:
-      '#type': textarea
-      '#title': www
   completion_time:
     '#type': textfield
     '#title': 'Completion Time'
@@ -39,6 +28,22 @@ elements: |
     '#type': webform_link
     '#title': 'Google Sheets URL'
     '#title__access': false
+  big_text:
+    '#type': textarea
+    '#title': 'big text'
+    '#description': 'This is the description'
+    '#help_title': 'this is the help text'
+    '#help': 'help text'
+    '#states':
+      invisible:
+        ':input[name="name"]':
+          empty: true
+      visible:
+        ':input[name="name"]':
+          filled: true
+      required:
+        ':input[name="name"]':
+          filled: true
 css: ''
 javascript: ''
 settings:

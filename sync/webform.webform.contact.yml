@@ -45,9 +45,9 @@ elements: |
     '#type': radios
     '#title': Radio2
     '#options':
-      option1: option1
-      option2: option2
-      option3: option3
+      option1: Milo1
+      option2: Milo2
+      option3: Milo3
   actions:
     '#type': webform_actions
     '#title': 'Submit button(s)'
@@ -56,6 +56,13 @@ elements: |
     '#type': 'entity_print_attachment:pdf'
     '#title': 'Submission PDF'
     '#filename': '[webform:title]-submission-[webform_submission:sid].pdf'
+  completion_time:
+    '#type': textfield
+    '#title': 'Completion Time'
+  google_sheets_url:
+    '#type': webform_link
+    '#title': 'Google Sheets URL'
+    '#title__access': false
 css: ''
 javascript: ''
 settings:

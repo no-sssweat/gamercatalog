@@ -1,4 +1,4 @@
-uuid: d7cba24b-a60e-4aff-9e8b-d91b0c77be11
+uuid: a9c5cb9a-a035-465b-b4bd-9a3a69522a3f
 langcode: en
 status: open
 dependencies: {  }
@@ -8,30 +8,18 @@ close: null
 uid: 1
 template: false
 archive: false
-id: test2
-title: test2
+id: cool
+title: cool
 description: ''
 category: ''
-elements: |
-  wee:
-    '#type': textarea
-    '#title': wee
+elements: |-
+  test:
+    '#type': textfield
+    '#title': test
   submission_pdf:
     '#type': 'webform_entity_print_attachment:pdf'
     '#title': 'Submission PDF'
     '#filename': '[webform:title]-submission-[webform_submission:sid].pdf'
-  page2:
-    '#type': webform_wizard_page
-    '#title': page2
-    test:
-      '#type': textarea
-      '#title': test
-  page3:
-    '#type': webform_wizard_page
-    '#title': page3
-    www:
-      '#type': textarea
-      '#title': www
   completion_time:
     '#type': textfield
     '#title': 'Completion Time'

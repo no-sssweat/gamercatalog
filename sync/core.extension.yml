@@ -12,6 +12,7 @@ module:
   breakpoint: 0
   captcha: 0
   ckeditor: 0
+  coe_webform_enhancements: 0
   coe_webform_pdf: 0
   coe_webform_purge: 0
   coe_webform_reports: 0
@@ -20,6 +21,7 @@ module:
   config: 0
   contextual: 0
   crypto: 0
+  csv_serialization: 0
   datetime: 0
   dblog: 0
   devel: 0
@@ -29,6 +31,8 @@ module:
   field_ui: 0
   file: 0
   filter: 0
+  form_examples: 0
+  google_analytics: 0
   google_api_client: 0
   help: 0
   history: 0
@@ -44,8 +48,10 @@ module:
   queue_ui: 0
   rdf: 0
   recaptcha: 0
+  rest: 0
   samlauth: 0
   search: 0
+  serialization: 0
   shortcut: 0
   system: 0
   taxonomy: 0
@@ -57,6 +63,7 @@ module:
   views_aggregator: 0
   views_aggregator_more_functions: 0
   views_bulk_operations: 0
+  views_data_export: 0
   views_ui: 0
   webform: 0
   webform_attachment: 0

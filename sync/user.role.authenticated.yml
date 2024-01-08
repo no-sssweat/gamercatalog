@@ -8,6 +8,7 @@ dependencies:
     - comment
     - devel
     - filter
+    - google_analytics
     - search
     - shortcut
     - system
@@ -22,6 +23,7 @@ permissions:
   - 'access content'
   - 'access devel information'
   - 'access shortcuts'
+  - 'opt-in or out of google analytics tracking'
   - 'post comments'
   - 'search content'
   - 'skip comment approval'

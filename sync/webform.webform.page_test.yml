@@ -1,4 +1,4 @@
-uuid: d7cba24b-a60e-4aff-9e8b-d91b0c77be11
+uuid: 8f5bcc88-0f4f-466f-beb4-1353b4ec2da4
 langcode: en
 status: open
 dependencies: {  }
@@ -8,37 +8,34 @@ close: null
 uid: 1
 template: false
 archive: false
-id: test2
-title: test2
+id: page_test
+title: 'Page Test'
 description: ''
 category: ''
-elements: |
-  wee:
-    '#type': textarea
-    '#title': wee
+elements: |-
+  page_1:
+    '#type': webform_wizard_page
+    '#title': 'Page 1'
+    test_1:
+      '#type': textfield
+      '#title': 'test 1'
   submission_pdf:
     '#type': 'webform_entity_print_attachment:pdf'
     '#title': 'Submission PDF'
     '#filename': '[webform:title]-submission-[webform_submission:sid].pdf'
-  page2:
-    '#type': webform_wizard_page
-    '#title': page2
-    test:
-      '#type': textarea
-      '#title': test
-  page3:
-    '#type': webform_wizard_page
-    '#title': page3
-    www:
-      '#type': textarea
-      '#title': www
   completion_time:
-    '#type': textfield
+    '#type': completion_time_element
     '#title': 'Completion Time'
   google_sheets_url:
     '#type': webform_link
     '#title': 'Google Sheets URL'
     '#title__access': false
+  page_2:
+    '#type': webform_wizard_page
+    '#title': 'Page 2'
+    test_2:
+      '#type': textfield
+      '#title': 'test 2'
 css: ''
 javascript: ''
 settings:

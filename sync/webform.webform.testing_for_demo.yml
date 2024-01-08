@@ -1,44 +1,51 @@
-uuid: d7cba24b-a60e-4aff-9e8b-d91b0c77be11
+uuid: f478755b-3ec7-438f-b41c-e9a29edd7bc3
 langcode: en
 status: open
-dependencies: {  }
+dependencies:
+  module:
+    - coe_webform_enhancements
 weight: 0
 open: null
 close: null
 uid: 1
 template: false
 archive: false
-id: test2
-title: test2
+id: testing_for_demo
+title: 'testing for demo'
 description: ''
 category: ''
-elements: |
-  wee:
+elements: |-
+  test:
     '#type': textarea
-    '#title': wee
+    '#title': test
   submission_pdf:
     '#type': 'webform_entity_print_attachment:pdf'
     '#title': 'Submission PDF'
     '#filename': '[webform:title]-submission-[webform_submission:sid].pdf'
-  page2:
-    '#type': webform_wizard_page
-    '#title': page2
-    test:
-      '#type': textarea
-      '#title': test
-  page3:
-    '#type': webform_wizard_page
-    '#title': page3
-    www:
-      '#type': textarea
-      '#title': www
   completion_time:
-    '#type': textfield
+    '#type': completion_time_element
     '#title': 'Completion Time'
   google_sheets_url:
-    '#type': webform_link
+    '#type': textfield
     '#title': 'Google Sheets URL'
     '#title__access': false
+  sig:
+    '#type': webform_signature
+    '#title': sig
+  checkboxes:
+    '#type': checkboxes
+    '#title': Checkboxes
+    '#options':
+      option1: Milk
+      option2: RIce
+      option3: Tomato
+  radios:
+    '#type': radios
+    '#title': Radios
+    '#options':
+      radio1: 'Yes'
+      radio2: 'No'
+      radio3: Maybe
 css: ''
 javascript: ''
 settings:
@@ -222,5 +229,44 @@ access:
     roles: {  }
     users: {  }
     permissions: {  }
-handlers: {  }
+handlers:
+  google_sheets_submissions:
+    id: googlesheets_submissions
+    handler_id: google_sheets_submissions
+    label: 'Google Sheets Submissions'
+    notes: ''
+    status: true
+    conditions: {  }
+    weight: 0
+    settings:
+      google_api_authentication_method: google_api_service_client
+      google_api_client_id: ''
+      google_api_service_client_id: coe_wfo_development
+      spreadsheet_id: 17yoBvpi0WAFbDfgo2k7n2qtbFhSeBF2wPNQoRnE0CrU
+      spreadsheet_delete_on_handler_delete: 0
+      spreadsheet_access_user_writer: camilo@yellowpencil.com
+      spreadsheet_access_revoke_writers_on_handler_delete: 0
+      spreadsheet_access_user_reader: ''
+      spreadsheet_access_revoke_readers_on_handler_delete: 0
+      spreadsheet_drive_directory_id: 1czp7hUhv8GqZtyXRMS3q8XsBO3WwiCt5
+      included_data:
+        serial: serial
+        sid: sid
+        uuid: uuid
+        token: token
+        uri: uri
+        created: created
+        completed: completed
+        changed: changed
+        in_draft: in_draft
+        current_page: current_page
+        remote_addr: remote_addr
+        uid: uid
+        langcode: langcode
+        webform_id: webform_id
+        entity_type: entity_type
+        entity_id: entity_id
+        locked: locked
+        sticky: sticky
+        notes: notes
 variants: {  }

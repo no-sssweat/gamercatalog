@@ -19,6 +19,10 @@ elements: |-
   signature_field:
     '#type': webform_signature
     '#title': 'Signature field'
+  google_sheets_url:
+    '#type': webform_link
+    '#title': 'Google Sheets URL'
+    '#title__access': false
   actions:
     '#type': webform_actions
     '#title': 'Submit button(s)'

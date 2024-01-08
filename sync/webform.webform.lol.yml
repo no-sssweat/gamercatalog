@@ -1,4 +1,4 @@
-uuid: d7cba24b-a60e-4aff-9e8b-d91b0c77be11
+uuid: 6423287b-f10e-40ae-8c66-b12dadcd8953
 langcode: en
 status: open
 dependencies: {  }
@@ -8,37 +8,11 @@ close: null
 uid: 1
 template: false
 archive: false
-id: test2
-title: test2
+id: lol
+title: lol
 description: ''
 category: ''
-elements: |
-  wee:
-    '#type': textarea
-    '#title': wee
-  submission_pdf:
-    '#type': 'webform_entity_print_attachment:pdf'
-    '#title': 'Submission PDF'
-    '#filename': '[webform:title]-submission-[webform_submission:sid].pdf'
-  page2:
-    '#type': webform_wizard_page
-    '#title': page2
-    test:
-      '#type': textarea
-      '#title': test
-  page3:
-    '#type': webform_wizard_page
-    '#title': page3
-    www:
-      '#type': textarea
-      '#title': www
-  completion_time:
-    '#type': textfield
-    '#title': 'Completion Time'
-  google_sheets_url:
-    '#type': webform_link
-    '#title': 'Google Sheets URL'
-    '#title__access': false
+elements: null
 css: ''
 javascript: ''
 settings:
