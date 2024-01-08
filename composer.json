@@ -33,9 +33,11 @@
         "drupal/token": "^1.13",
         "drupal/views_aggregator": "^2.0",
         "drupal/views_bulk_operations": "^4.2",
+        "drupal/views_data_export": "^1.4",
         "drupal/webform": " ^6.1@beta",
         "drupal/webform_views": "^5.2",
-        "google/analytics-data": "*",
+        "drupal/webprofiler": "^9.0",
+        "google/analytics-data": "0.11.1",
         "google/apiclient": "^2.0",
         "kint-php/kint": "~3.0"
     },
@@ -91,6 +93,9 @@
         "patches": {
             "drupal/devel": {
                 "Brings back tabs": "https://www.drupal.org/files/issues/2021-12-22/drupal-kint.patch"
+            },
+            "drupal/core": {
+                "Time filter fix": "https://www.drupal.org/files/issues/2023-04-07/2982968-core-views-improve-date-filter-47.patch"
             }
         },
         "drupal-core-project-message": {
