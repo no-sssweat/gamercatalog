@@ -62,7 +62,7 @@ webform.config.elements:
 
 webform.config.submissions:
   title: 'Submissions'
-  route_name: coe_webform_reports.page
+  route_name: coe_webform_reports.page2
   parent_id: webform.config
   weight: 40
 

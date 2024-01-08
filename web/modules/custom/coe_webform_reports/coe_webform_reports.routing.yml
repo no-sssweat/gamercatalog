@@ -6,6 +6,14 @@ coe_webform_reports.page:
   requirements:
     _permission: 'webform.update'
 
+coe_webform_reports.page2:
+  path: '/admin/structure/webform/manage/{webform}/results/submissions2'
+  defaults:
+    _controller: '\Drupal\coe_webform_reports\Controller\ReportsPage::content'
+    _title: 'Submission Reports Page'
+  requirements:
+    _permission: 'webform.update'
+
 coe_webform_reports.page.csv:
   path: '/admin/structure/webform/manage/{webform}/results/submissions/csv'
   defaults:
