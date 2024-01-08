@@ -5,7 +5,7 @@
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => 'e37051b66c675172abe6ea6b9c7c25b1cf6e9e0d',
+        'reference' => 'f3c18a3903da7b7b068e03729bf597552d97a07b',
         'name' => 'drupal/recommended-project',
         'dev' => true,
     ),
@@ -541,7 +541,7 @@
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => 'e37051b66c675172abe6ea6b9c7c25b1cf6e9e0d',
+            'reference' => 'f3c18a3903da7b7b068e03729bf597552d97a07b',
             'dev_requirement' => false,
         ),
         'drupal/samlauth' => array(
