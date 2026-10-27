@@ -11,12 +11,12 @@ use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Serialization\Yaml;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\webform\EntityStorage\WebformEntityStorageTrait;
 use Drupal\webform\Plugin\WebformElement\WebformCompositeBase;
 use Drupal\webform\Plugin\WebformElement\WebformLikert;
 use Drupal\webform\Plugin\WebformElement\WebformManagedFileBase;
 use Drupal\webform\Plugin\WebformElementEntityReferenceInterface;
 use Drupal\webform\Plugin\WebformElementManagerInterface;
-use Drupal\webform\EntityStorage\WebformEntityStorageTrait;
 use Drupal\webform\WebformInterface;
 use Drupal\webform\WebformSubmissionForm;
 use Drupal\webform\WebformSubmissionInterface;
@@ -114,6 +114,13 @@ class WebformSubmissionExportImportImporter implements WebformSubmissionExportIm
    * @var \Drupal\Core\File\FileSystemInterface
    */
   protected $fileSystem;
+
+  /**
+   * Webform element types.
+   *
+   * @var array
+   */
+  protected $elementTypes;
 
   /**
    * Constructs a WebformSubmissionExportImport object.
@@ -789,10 +796,9 @@ class WebformSubmissionExportImportImporter implements WebformSubmissionExportIm
       fwrite($handle, $temp_file_contents);
       $temp_file_meta_data = stream_get_meta_data($handle);
       $temp_file_path = $temp_file_meta_data['uri'];
-      $temp_file_size = filesize($temp_file_path);
 
       // Mimic Symfony and Drupal's upload file handling.
-      $temp_file_info = new UploadedFile($temp_file_path, basename($new_file_uri), NULL, $temp_file_size);
+      $temp_file_info = new UploadedFile($temp_file_path, basename($new_file_uri));
       $webform_element_key = $element_plugin->getLabel($element);
       $new_file = _webform_submission_export_import_file_save_upload_single($temp_file_info, $webform_element_key, $file_upload_validators, $file_destination);
       if ($new_file) {

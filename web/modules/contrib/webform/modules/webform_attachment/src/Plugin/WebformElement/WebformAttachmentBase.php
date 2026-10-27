@@ -131,7 +131,7 @@ abstract class WebformAttachmentBase extends WebformElementBase implements Webfo
    */
   public function getItemFormats() {
     return [
-      'link' => $this->t('File link22'),
+      'link' => $this->t('File link'),
       'name' => $this->t('File name'),
       'url' => $this->t('File URL'),
     ];

@@ -7,11 +7,9 @@ namespace Laminas\Feed\Reader;
 use Laminas\Feed\Reader\Extension\AbstractEntry;
 use Laminas\Feed\Reader\Extension\AbstractFeed;
 use Laminas\ServiceManager\AbstractPluginManager;
-use Laminas\ServiceManager\ConfigInterface;
 use Laminas\ServiceManager\Exception\InvalidServiceException;
 use Laminas\ServiceManager\Factory\InvokableFactory;
 
-use function get_class;
 use function gettype;
 use function is_object;
 use function sprintf;
@@ -23,16 +21,17 @@ use function sprintf;
  * Validation checks that we have an Extension\AbstractEntry or
  * Extension\AbstractFeed.
  *
- * @psalm-import-type FactoriesConfigurationType from ConfigInterface
  * @final this class wasn't designed to be inherited from, but we can't assume that consumers haven't already
  *        extended it, therefore we cannot add the final marker without a new major release.
+ * @template InstanceType of AbstractEntry|AbstractFeed
+ * @template-extends AbstractPluginManager<InstanceType>
  */
 class ExtensionPluginManager extends AbstractPluginManager implements ExtensionManagerInterface
 {
     /**
      * Aliases for default set of extension classes
      *
-     * @var array<array-key, string>
+     * @inheritDoc
      */
     protected $aliases = [
         'atomentry'               => Extension\Atom\Entry::class,
@@ -142,8 +141,7 @@ class ExtensionPluginManager extends AbstractPluginManager implements ExtensionM
     /**
      * Factories for default set of extension classes
      *
-     * @var array<array-key, callable|string>
-     * @psalm-var FactoriesConfigurationType
+     * @inheritDoc
      */
     protected $factories = [
         Extension\Atom\Entry::class              => InvokableFactory::class,
@@ -201,16 +199,8 @@ class ExtensionPluginManager extends AbstractPluginManager implements ExtensionM
      */
     protected $sharedByDefault = false;
 
-    /**
-     * Validate the plugin
-     *
-     * Checks that the extension loaded is of a valid type.
-     *
-     * @param  mixed $instance
-     * @return void
-     * @throws Exception\InvalidArgumentException If invalid.
-     */
-    public function validate($instance)
+    /** @inheritDoc */
+    public function validate(mixed $instance)
     {
         if (
             $instance instanceof AbstractEntry
@@ -222,7 +212,7 @@ class ExtensionPluginManager extends AbstractPluginManager implements ExtensionM
 
         throw new InvalidServiceException(sprintf(
             'Plugin of type %s is invalid; must implement %s or %s',
-            is_object($instance) ? get_class($instance) : gettype($instance),
+            is_object($instance) ? $instance::class : gettype($instance),
             AbstractEntry::class,
             AbstractFeed::class
         ));
@@ -245,7 +235,7 @@ class ExtensionPluginManager extends AbstractPluginManager implements ExtensionM
         } catch (InvalidServiceException $e) {
             throw new Exception\InvalidArgumentException(sprintf(
                 'Plugin of type %s is invalid; must implement %s or %s',
-                is_object($plugin) ? get_class($plugin) : gettype($plugin),
+                is_object($plugin) ? $plugin::class : gettype($plugin),
                 AbstractEntry::class,
                 AbstractFeed::class
             ));
