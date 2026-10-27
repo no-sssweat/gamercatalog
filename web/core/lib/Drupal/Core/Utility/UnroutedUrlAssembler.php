@@ -69,6 +69,10 @@ class UnroutedUrlAssembler implements UnroutedUrlAssemblerInterface {
    * {@inheritdoc}
    */
   protected function buildExternalUrl($uri, array $options = [], $collect_bubbleable_metadata = FALSE) {
+    // Early return so external URLs are not altered unnecessarily.
+    if (empty($options['query']) && empty($options['fragment']) && !isset($options['https'])) {
+      return $collect_bubbleable_metadata ? (new GeneratedUrl())->setGeneratedUrl($uri) : $uri;
+    }
     $this->addOptionDefaults($options);
     // Split off the query & fragment.
     $parsed = UrlHelper::parse($uri);
@@ -178,7 +182,7 @@ class UnroutedUrlAssembler implements UnroutedUrlAssemblerInterface {
     // is added, to allow simple string concatenation with other parts.
     if (!empty($base_path_with_script)) {
       $script_name = $request->getScriptName();
-      if (strpos($base_path_with_script, $script_name) !== FALSE) {
+      if (str_contains($base_path_with_script, $script_name)) {
         $current_script_path = ltrim(substr($script_name, strlen($current_base_path)), '/') . '/';
       }
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\Tests\system\Functional\System;
 
 use Drupal\Tests\BrowserTestBase;
@@ -12,9 +14,7 @@ use Drupal\Tests\BrowserTestBase;
 class FrontPageTest extends BrowserTestBase {
 
   /**
-   * Modules to enable.
-   *
-   * @var array
+   * {@inheritdoc}
    */
   protected static $modules = ['node', 'system_test', 'views'];
 
@@ -53,7 +53,7 @@ class FrontPageTest extends BrowserTestBase {
   /**
    * Tests front page functionality.
    */
-  public function testDrupalFrontPage() {
+  public function testDrupalFrontPage(): void {
     // Create a promoted node to test the <title> tag on the front page view.
     $settings = [
       'title' => $this->randomMachineName(8),
@@ -95,6 +95,11 @@ class FrontPageTest extends BrowserTestBase {
     $this->assertSession()->pageTextNotContains('On front page.');
     $this->drupalGet($this->nodePath);
     $this->assertSession()->pageTextContains('On front page.');
+
+    // Test the form when page.front is null.
+    $this->config('system.site')->clear('page.front')->save();
+    $this->drupalGet('admin/config/system/site-information');
+    $this->assertSession()->statusCodeEquals(200);
   }
 
 }

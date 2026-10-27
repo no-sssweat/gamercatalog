@@ -4,15 +4,21 @@ namespace Drupal\editor\Entity;
 
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Config\Entity\ConfigEntityBase;
+use Drupal\Core\StreamWrapper\StreamWrapperInterface;
 use Drupal\editor\EditorInterface;
 
 /**
  * Defines the configured text editor entity.
  *
+ * An Editor entity is created when a filter format entity (Text format) is
+ * saved after selecting an editor plugin (eg: CKEditor). The ID of the
+ * Editor entity will be same as the ID of the filter format entity in which
+ * the editor plugin was selected.
+ *
  * @ConfigEntityType(
  *   id = "editor",
- *   label = @Translation("Text Editor"),
- *   label_collection = @Translation("Text Editors"),
+ *   label = @Translation("Text editor"),
+ *   label_collection = @Translation("Text editors"),
  *   label_singular = @Translation("text editor"),
  *   label_plural = @Translation("text editors"),
  *   label_count = @PluralTranslation(
@@ -30,6 +36,11 @@ use Drupal\editor\EditorInterface;
  *     "editor",
  *     "settings",
  *     "image_upload",
+ *   },
+ *   constraints = {
+ *     "RequiredConfigDependencies" = {
+ *       "filter_format"
+ *     }
  *   }
  * )
  */
@@ -114,7 +125,14 @@ class Editor extends ConfigEntityBase implements EditorInterface {
   public function calculateDependencies() {
     parent::calculateDependencies();
     // Create a dependency on the associated FilterFormat.
-    $this->addDependency('config', $this->getFilterFormat()->getConfigDependencyName());
+    $text_format = $this->getFilterFormat();
+    if ($text_format) {
+      $this->addDependency('config', $text_format->getConfigDependencyName());
+    }
+    else {
+      trigger_error("The editor {$this->id()} is configured for text format {$this->id()} which does not exist. Review whether it is still needed and delete if not.", E_USER_WARNING);
+    }
+
     // @todo use EntityWithPluginCollectionInterface so configuration between
     //   config entity and dependency on provider is managed automatically.
     $definition = $this->editorPluginManager()->createInstance($this->editor)->getPluginDefinition();
@@ -195,6 +213,20 @@ class Editor extends ConfigEntityBase implements EditorInterface {
   public function setImageUploadSettings(array $image_upload_settings) {
     $this->image_upload = $image_upload_settings;
     return $this;
+  }
+
+  /**
+   * Computes all valid choices for the "image_upload.scheme" setting.
+   *
+   * @see editor.schema.yml
+   *
+   * @return string[]
+   *   All valid choices.
+   *
+   * @internal
+   */
+  public static function getValidStreamWrappers(): array {
+    return array_keys(\Drupal::service('stream_wrapper_manager')->getNames(StreamWrapperInterface::WRITE_VISIBLE));
   }
 
 }

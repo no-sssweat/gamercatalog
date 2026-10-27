@@ -1,7 +1,7 @@
 /* eslint-disable import/no-extraneous-dependencies */
-// cSpell:words conversionutils datafilter eventinfo downcastdispatcher generalhtmlsupport
+// cspell:ignore datafilter eventinfo downcastdispatcher generalhtmlsupport
 import { Plugin } from 'ckeditor5/src/core';
-import { setViewAttributes } from '@ckeditor/ckeditor5-html-support/src/conversionutils';
+import { setViewAttributes } from '@ckeditor/ckeditor5-html-support/src/utils';
 
 /**
  * View-to-model conversion helper for Drupal Media.
@@ -55,11 +55,11 @@ function viewToModelDrupalMediaAttributeConverter(dataFilter) {
  *
  * @param {module:engine/model/writer~Writer} writer
  *   The writer.
- * @param {module:engine/view/element~Element} containerElement
+ * @param {module:engine/view/element~ModelElement} containerElement
  *   The container element.
  * @param {string} elementName
  *   The element name.
- * @return {module:engine/view/element~Element|undefined}
+ * @return {module:engine/view/element~ModelElement|undefined}
  *   The descendant element matching element name or undefined if not found.
  */
 function getDescendantElement(writer, containerElement, elementName) {

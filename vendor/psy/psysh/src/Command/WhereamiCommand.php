@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2020 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -11,8 +11,8 @@
 
 namespace Psy\Command;
 
+use Psy\ConfigPaths;
 use Psy\Formatter\CodeFormatter;
-use Psy\Output\ShellOutput;
 use Psy\Shell;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -23,12 +23,9 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class WhereamiCommand extends Command
 {
-    private $backtrace;
+    private array $backtrace;
 
-    /**
-     * @param string|null $colorMode (deprecated and ignored)
-     */
-    public function __construct($colorMode = null)
+    public function __construct()
     {
         $this->backtrace = \debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS);
 
@@ -38,7 +35,7 @@ class WhereamiCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('whereami')
@@ -67,7 +64,7 @@ HELP
      *
      * @return array
      */
-    protected function trace()
+    protected function trace(): array
     {
         foreach (\array_reverse($this->backtrace) as $stackFrame) {
             if ($this->isDebugCall($stackFrame)) {
@@ -78,7 +75,7 @@ HELP
         return \end($this->backtrace);
     }
 
-    private static function isDebugCall(array $stackFrame)
+    private static function isDebugCall(array $stackFrame): bool
     {
         $class = isset($stackFrame['class']) ? $stackFrame['class'] : null;
         $function = isset($stackFrame['function']) ? $stackFrame['function'] : null;
@@ -92,7 +89,7 @@ HELP
      *
      * @return array
      */
-    protected function fileInfo()
+    protected function fileInfo(): array
     {
         $stackFrame = $this->trace();
         if (\preg_match('/eval\(/', $stackFrame['file'])) {
@@ -109,9 +106,13 @@ HELP
 
     /**
      * {@inheritdoc}
+     *
+     * @return int 0 if everything went fine, or an exit code
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $shellOutput = $this->shellOutput($output);
+
         $info = $this->fileInfo();
         $num = $input->getOption('num');
         $lineNum = $info['line'];
@@ -124,36 +125,13 @@ HELP
             $endLine = null;
         }
 
-        if ($output instanceof ShellOutput) {
-            $output->startPaging();
-        }
+        $shellOutput->startPaging();
 
-        $output->writeln(\sprintf('From <info>%s:%s</info>:', $this->replaceCwd($info['file']), $lineNum));
+        $output->writeln(\sprintf('From <info>%s:%s</info>:', ConfigPaths::prettyPath($info['file']), $lineNum));
         $output->write(CodeFormatter::formatCode($code, $startLine, $endLine, $lineNum), false);
 
-        if ($output instanceof ShellOutput) {
-            $output->stopPaging();
-        }
+        $shellOutput->stopPaging();
 
         return 0;
-    }
-
-    /**
-     * Replace the given directory from the start of a filepath.
-     *
-     * @param string $file
-     *
-     * @return string
-     */
-    private function replaceCwd($file)
-    {
-        $cwd = \getcwd();
-        if ($cwd === false) {
-            return $file;
-        }
-
-        $cwd = \rtrim($cwd, \DIRECTORY_SEPARATOR).\DIRECTORY_SEPARATOR;
-
-        return \preg_replace('/^'.\preg_quote($cwd, '/').'/', '', $file);
     }
 }

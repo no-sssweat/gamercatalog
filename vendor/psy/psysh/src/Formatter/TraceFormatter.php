@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2020 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -22,23 +22,15 @@ class TraceFormatter
     /**
      * Format the trace of the given exception.
      *
-     * @throws \InvalidArgumentException if passed a non-Throwable value
-     *
-     * @todo type hint $throwable when we drop support for PHP 5.x
-     *
-     * @param \Throwable    $throwable  The error or exception with a backtrace
-     * @param FilterOptions $filter     (default: null)
-     * @param int           $count      (default: PHP_INT_MAX)
-     * @param bool          $includePsy (default: true)
+     * @param \Throwable         $throwable  The error or exception with a backtrace
+     * @param FilterOptions|null $filter     (default: null)
+     * @param int|null           $count      (default: PHP_INT_MAX)
+     * @param bool               $includePsy (default: true)
      *
      * @return string[] Formatted stacktrace lines
      */
-    public static function formatTrace($throwable, FilterOptions $filter = null, $count = null, $includePsy = true)
+    public static function formatTrace(\Throwable $throwable, ?FilterOptions $filter = null, ?int $count = null, bool $includePsy = true): array
     {
-        if (!($throwable instanceof \Throwable || $throwable instanceof \Exception)) {
-            throw new \InvalidArgumentException('Unable to format non-throwable value');
-        }
-
         if ($cwd = \getcwd()) {
             $cwd = \rtrim($cwd, \DIRECTORY_SEPARATOR).\DIRECTORY_SEPARATOR;
         }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\Tests\media\FunctionalJavascript;
 
 use Drupal\field\Entity\FieldConfig;
@@ -14,7 +16,7 @@ abstract class MediaSourceTestBase extends MediaJavascriptTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Let's set the canonical flag in the base class of the source tests,
@@ -145,6 +147,7 @@ abstract class MediaSourceTestBase extends MediaJavascriptTestBase {
 
     // Save the form to create the type.
     $page->pressButton('Save');
+    $assert_session->waitForElement('css', '.messages--status');
     $assert_session->pageTextContains('The media type ' . $media_type_id . ' has been added.');
     $this->drupalGet('admin/structure/media');
     $assert_session->pageTextContains($media_type_id);

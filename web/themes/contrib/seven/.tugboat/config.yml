@@ -1,0 +1,62 @@
+services:
+  php:
+    # Specify the version of Drupal you wish to use for Tugboat below.
+    image: tugboatqa/drupal:10.6
+    default: true
+    http: false
+    depends: mysql
+    commands:
+      update: |
+        set -eux
+        # Increase memory limit.
+        echo "memory_limit = 3G" >> /usr/local/etc/php/conf.d/my-php.ini
+        # This is an environment variable we added in the Dockerfile that
+        # provides the path to Drupal composer root (not the web root).
+        cd $DRUPAL_COMPOSER_ROOT
+        # We need to change the minimum stability to dev to use the path.
+        composer config minimum-stability dev
+        # We configure the Drupal project to use the checkout of the theme as a
+        # Composer package repository.
+        composer config repositories.tugboat path $TUGBOAT_ROOT
+        # Now we can require this theme.
+        composer require drupal/seven
+        # Install Drupal on the site.
+        vendor/bin/drush \
+          --yes \
+          --db-url=mysql://tugboat:tugboat@mysql:3306/tugboat \
+          --site-name=Seven \
+          --account-pass=admin \
+          site:install standard
+        # Add tugboat URLs to the Drupal trusted host patterns.
+        echo "\$settings['trusted_host_patterns'] = ['\.tugboatqa\.com\$'];" >> $DOCROOT/sites/default/settings.php
+        # Enable the Seven theme.
+        vendor/bin/drush --yes theme:enable seven
+        # Make it the default admin theme.
+        vendor/bin/drush --yes config-set system.theme admin seven
+        # Enable the Media Library module.
+        vendor/bin/drush --yes pm:enable media media_library
+        # Disable CSS and JavaScript aggregation.
+        vendor/bin/drush --yes config-set system.performance css.preprocess 0
+        vendor/bin/drush --yes config-set system.performance js.preprocess 0
+        # Enable Twig debug.
+        vendor/bin/drush --yes state:set twig_debug TRUE
+        # Disable Twig and render cache.
+        vendor/bin/drush --yes state:set twig_cache_disable TRUE
+        vendor/bin/drush --yes state:set disable_rendered_output_cache_bins TRUE
+        # Rebuild cache.
+        vendor/bin/drush cache:rebuild
+        # Set up the files directory permissions.
+        mkdir -p $DRUPAL_DOCROOT/sites/default/files
+        chgrp -R www-data $DRUPAL_DOCROOT/sites/default/files
+        chmod 2775 $DRUPAL_DOCROOT/sites/default/files
+        chmod -R g+w $DRUPAL_DOCROOT/sites/default/files
+      build: |
+        set -eux
+        cd $DRUPAL_COMPOSER_ROOT
+        composer install --optimize-autoloader
+        # Update this theme, including all dependencies.
+        composer update drupal/seven --with-all-dependencies
+        vendor/bin/drush --yes updb
+        vendor/bin/drush cache:rebuild
+  mysql:
+    image: tugboatqa/mariadb

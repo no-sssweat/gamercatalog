@@ -30,7 +30,7 @@ class Condition extends ConditionBase {
    *
    * @var \Drupal\Core\Database\Query\SelectInterface
    */
-  protected $sqlQuery;
+  protected SelectInterface $sqlQuery;
 
   /**
    * {@inheritdoc}
@@ -67,6 +67,9 @@ class Condition extends ConditionBase {
           continue;
         }
         $condition['real_field'] = $field;
+        if (is_array($condition['value'])) {
+          $condition['value'] = array_values($condition['value']);
+        }
         static::translateCondition($condition, $sql_query, $tables->isFieldCaseSensitive($condition['field']));
 
         // Add the translated conditions back to the condition container.

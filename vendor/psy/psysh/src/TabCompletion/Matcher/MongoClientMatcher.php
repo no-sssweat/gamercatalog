@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2020 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -23,7 +23,7 @@ class MongoClientMatcher extends AbstractContextAwareMatcher
     /**
      * {@inheritdoc}
      */
-    public function getMatches(array $tokens, array $info = [])
+    public function getMatches(array $tokens, array $info = []): array
     {
         $input = $this->getInput($tokens);
 
@@ -43,19 +43,15 @@ class MongoClientMatcher extends AbstractContextAwareMatcher
         $list = $object->listDBs();
 
         return \array_filter(
-            \array_map(function ($info) {
-                return $info['name'];
-            }, $list['databases']),
-            function ($var) use ($input) {
-                return AbstractMatcher::startsWith($input, $var);
-            }
+            \array_map(fn ($info) => $info['name'], $list['databases']),
+            fn ($var) => AbstractMatcher::startsWith($input, $var)
         );
     }
 
     /**
      * {@inheritdoc}
      */
-    public function hasMatched(array $tokens)
+    public function hasMatched(array $tokens): bool
     {
         $token = \array_pop($tokens);
         $prevToken = \array_pop($tokens);

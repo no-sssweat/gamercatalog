@@ -1,0 +1,15 @@
+# color.inc variables
+sidebarborders
+titleslogan
+
+# preview.html: Lorem ipsum
+Quidne
+Torqueo
+nostrudfelis
+nostr
+udfelis
+Erisus
+
+# README.txt: ENIAC is the proper name of an historic computer.
+ENIAC
+readmore

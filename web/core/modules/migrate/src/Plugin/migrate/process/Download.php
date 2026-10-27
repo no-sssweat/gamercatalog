@@ -4,6 +4,7 @@ namespace Drupal\migrate\Plugin\migrate\process;
 
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\migrate\Attribute\MigrateProcess;
 use Drupal\migrate\MigrateException;
 use Drupal\migrate\MigrateExecutableInterface;
 use Drupal\migrate\Row;
@@ -31,31 +32,34 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *
  * @code
  * process:
- *   plugin: download
- *   source:
- *     - source_url
- *     - destination_uri
+ *   path_to_file:
+ *     plugin: download
+ *     source:
+ *       - source_url
+ *       - destination_uri
  * @endcode
  *
  * This will download source_url to destination_uri.
  *
  * @code
  * process:
- *   plugin: download
- *   source:
- *     - source_url
- *     - destination_uri
- *   file_exists: rename
+ *   uri:
+ *     plugin: download
+ *     source:
+ *       - source_url
+ *       - destination_uri
+ *     file_exists: rename
+ *   # other fields ...
+ * destination:
+ *   plugin: entity:file
  * @endcode
  *
  * This will download source_url to destination_uri and ensure that the
  * destination URI is unique. If a file with the same name exists at the
  * destination, a numbered suffix like '_0' will be appended to make it unique.
- *
- * @MigrateProcessPlugin(
- *   id = "download"
- * )
+ * The destination URI is saved in a file entity.
  */
+#[MigrateProcess('download')]
 class Download extends FileProcessBase implements ContainerFactoryPluginInterface {
 
   /**
@@ -152,6 +156,12 @@ class Download extends FileProcessBase implements ContainerFactoryPluginInterfac
       $this->httpClient->get($source, $this->configuration['guzzle_options']);
     }
     catch (\Exception $e) {
+      // Since the destination file stream was used as the sink for the Guzzle
+      // request, invalid file content from the failed request may be stored in
+      // a newly created file. Clean up the file if it exists since the request
+      // failed.
+      $this->fileSystem->delete($final_destination);
+
       throw new MigrateException("{$e->getMessage()} ($source)");
     }
 

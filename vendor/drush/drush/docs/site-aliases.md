@@ -75,10 +75,6 @@ drush:
       - /etc/drush/sites
 ```
 
-The command `drush core:init` will automatically configure your
-~/.drush/drush.yml configuration file to add `~/.drush/sites` and
-`/etc/drush/sites` as locations where alias files may be placed.
-
 A canonical alias named _example_ that points to a local
 Drupal site named at http://example.com like this:
 
@@ -104,14 +100,13 @@ This command is equivalent to the longer form:
 ```
 See [Additional Site Alias Options](#additional-site-alias-options) for more information.
 
-### Converting Legacy Alias Files
-
-To convert legacy alias (*.aliases.drushrc.php) to yml, run the
-[site:alias-convert](commands/site_alias-convert.md) command.
-
 ### Altering aliases:
 
 See [examples/Commands/SiteAliasAlterCommands.php](https://www.drush.org/latest/examples/SiteAliasAlterCommands.php/)) for an example.
+
+### Site specifications:
+
+When a site alias name is provided on the command line, a site specification may be used instead. A site specification is a site alias that is not saved on the filesystem but instead is provided directly e.g. `drush user@server/path/to/drupal#uri core:status`. See [example site specifications](https://github.com/consolidation/site-alias/blob/ef2eb7d37e59b3d837b4556d4d8070cb345b378c/src/SiteSpecParser.php#L24-L31).
 
 ### Environment variables
 
@@ -119,7 +114,7 @@ Site aliases may reference environment variables, just like any Drush config
 file. For example, `${env.PROJECT_SSH_USER}` will be replaced by the value
 of the `PROJECT_SSH_USER` environment value.
 
-SSH site aliases may set environment variables via the `env-var` key.
+SSH site aliases may set environment variables via the `env-vars` key.
 See below.
 
 ### Additional Site Alias Options
@@ -129,35 +124,33 @@ local or remote Drupal installations; however, an alias
 is really nothing more than a collection of options.
 
 - **docker**: When specified, Drush executes via `docker-compose` exec rather than `ssh`.
-  - **service**: the name of the container to run on.
-  - **exec**:
-    - **options**: Options for the exec subcommand.
+    - **service**: the name of the container to run on.
+    - **exec**:
+        - **options**: Options for the exec subcommand.
+- **kubectl** When specified, Drush executes via `kubectl` exec rather than `ssh`.
+    - **namespace** The namespace to execute the command in.
+    - **resource** The k8s object to execute the command on.
+    - **container** The container in the resource to execute the command on.
 - **os**: The operating system of the remote server.  Valid values
   are _Windows_ and _Linux_. Set this value for all remote
   aliases where the remote's OS differs from the local. This is especially relevant
   for the [sql:sync](commands/sql_sync.md) command.
 - **ssh**: Contains settings used to control how ssh commands are generated
   when running remote commands.
-  - **options**: Contains additional commandline options for the `ssh` command
+    - **options**: Contains additional commandline options for the `ssh` command
   itself, e.g. `-p 100`
-  - **tty**: Usually, Drush will decide whether or not to create a tty (via
+    - **tty**: Usually, Drush will decide whether or not to create a tty (via
   the `ssh --t` option) based on whether the local Drush command is running
   interactively or not. To force Drush to always or never create a tty,
   set the `ssh.tty` option to _true_ or _false_, respectively.
-- **paths**: An array of aliases for common rsync targets.
-  Relative aliases are always taken from the Drupal root.
-  - **files**: Path to _files_ directory.  This will be looked up if not
-    specified.
-  - **drush-script**: Path to the remote Drush command.
-- **command**: These options will only be set if the alias
-  is used with the specified command.  In the advanced example below, the option
-  `--no-dump` will be selected whenever the `@stage` alias
-  is used in any of the following ways:
+- **paths**: An array of aliases for common rsync targets. Relative aliases are always taken from the Drupal root.
+    - **files**: Path to _files_ directory. This will be looked up if not specified.
+    - **drush-script**: Path to the remote Drush command.
+- **command**: These options will only be set if the alias is used with the specified command.  In the advanced example below, the option `--no-dump` will be selected whenever the `@stage` alias is used in any of the following ways:
     - `drush @stage sql-sync @self @live`
     - `drush sql-sync @stage @live`
     - `drush sql-sync @live @stage`
-- **env-vars**: An array of key / value pairs that will be set as environment
-  variables.
+- **env-vars**: An array of key / value pairs that will be set as environment variables.
 
 Complex example:
 
@@ -242,9 +235,9 @@ With a wildcard record, any environment name may be used, and will always
 match. This is not desirable in instances where the specified environment
 does not exist (e.g. if the user made a typo). An alias alter hook in a
 policy file may be used to catch these mistakes and report an error.
-See [SiteAliasAlterCommands](../examples/Commands/SiteAliasAlterCommands.php) for an example on how to do this.
+See [SiteAliasAlterCommands](https://www.drush.org/latest/examples/SiteAliasAlterCommands.php/) for an example on how to do this.
 
-### Docker Compose and other transports
+### Docker Compose
 
 The example below shows drush calling into a Docker hosted site. See the https://github.com/consolidation/site-alias and https://github.com/consolidation/site-process projects for more developer
 information about transports. 
@@ -277,6 +270,26 @@ dev:
   root: /path/to/docroot
   uri: https://dev.example.com
 ```
+
+### Kubernetes
+
+Drush provides transport for running drush commands on your Kubernetes cluster via [kubectl](https://kubernetes.io/docs/reference/kubectl/). See an example and options below.
+
+ ```yml
+ prod: 
+   kubectl:
+     namespace: 'my-drupal-namespace'
+     resource: 'pods/my-drupal-pod' 
+     container: 'drupal'
+ ```
+
+#### Key options
+  * **namespace:** The namespace where your Drupal deployment resides.
+  * **resource:**  Kubernetes resource type (usually 'pods').
+  * **container:** The specific container within the pod where Drupal runs.
+  * **kubeconfig:** The kubeconfig file to use for authentication.
+  * **entrypoint:** The command to use as the container entrypoint.
+
 
 ### Example of rsync with exclude-paths
 

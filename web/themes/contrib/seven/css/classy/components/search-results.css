@@ -1,0 +1,8 @@
+/**
+ * @file
+ * Styles for results output by the Search module.
+ */
+
+.search-results {
+  list-style: none;
+}

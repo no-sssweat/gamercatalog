@@ -1,0 +1,6 @@
+{
+    "name": "drupal/bartik",
+    "description": "The Bartik theme from Drupal 8/9 moved to contrib.",
+    "type": "drupal-theme",
+    "license": "GPL-2.0-or-later"
+}

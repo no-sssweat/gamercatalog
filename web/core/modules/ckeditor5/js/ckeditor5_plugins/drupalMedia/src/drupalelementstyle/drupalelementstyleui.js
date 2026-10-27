@@ -1,16 +1,16 @@
 /* eslint-disable import/no-extraneous-dependencies */
-/* cspell:words drupalelementstyleediting splitbutton imagestyle componentfactory buttonview */
+/* cspell:ignore drupalelementstyleediting splitbutton imagestyle componentfactory buttonview */
 import { Plugin } from 'ckeditor5/src/core';
 import { Collection, toMap } from 'ckeditor5/src/utils';
-import utils from '@ckeditor/ckeditor5-image/src/imagestyle/utils';
+import { utils } from '@ckeditor/ckeditor5-image/src/imagestyle/utils';
 import {
   addToolbarToDropdown,
   addListToDropdown,
   ButtonView,
   createDropdown,
   DropdownButtonView,
-  Model,
   SplitButtonView,
+  ViewModel,
 } from 'ckeditor5/src/ui';
 import DrupalElementStyleEditing from './drupalelementstyleediting';
 import { isObject } from '../utils';
@@ -428,7 +428,7 @@ export default class DrupalElementStyleUi extends Plugin {
     definedStyles.forEach((style) => {
       const definition = {
         type: 'button',
-        model: new Model({
+        model: new ViewModel({
           group,
           commandValue: style.name,
           label: style.title,

@@ -4,10 +4,10 @@
 on:
   pull_request:
     branches:
-      - main
+      - 3.x
   push:
     branches:
-      - main
+      - 3.x
 
 name: CI
 
@@ -24,7 +24,7 @@ jobs:
       - name: Install PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 7.4
+          php-version: 8.2
           coverage: none
 
       - name: Install dependencies
@@ -53,7 +53,7 @@ jobs:
       - name: Install PHP with extensions
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 7.4
+          php-version: 8.2
           coverage: none
           extensions: intl
 
@@ -63,13 +63,13 @@ jobs:
       - name: Install roave/backward-compatibility-check
         run: |
           mkdir -p tools
-          composer --working-dir=tools require roave/backward-compatibility-check:^5
+          composer --working-dir=tools require roave/backward-compatibility-check:^7
 
       - name: Run roave/backward-compatibility-check
-        run: ./tools/vendor/bin/roave-backward-compatibility-check --from=2.0.1
+        run: ./tools/vendor/bin/roave-backward-compatibility-check --from=3.0.0
 
   tests:
-    name: Tests
+    name: Tests ${{ matrix.symfony && format('(Symfony {0})', matrix.symfony) || '' }}
 
     runs-on: ${{ matrix.os }}
 
@@ -83,7 +83,7 @@ jobs:
           - windows-latest
 
         php-version:
-          - "7.4"
+          - "8.2"
 
         php-ini-values:
           - assert.exception=1, zend.assertions=1
@@ -94,15 +94,10 @@ jobs:
         codecov:
           - false
 
+        symfony:
+          - ""
+
         include:
-          - os: ubuntu-latest
-            php-version: "7.1"
-            dependencies: lowest
-
-          - os: ubuntu-latest
-            php-version: "7.4"
-            dependencies: lowest
-
           - os: ubuntu-latest
             php-version: "8.0"
             dependencies: highest
@@ -114,6 +109,38 @@ jobs:
             dependencies: highest
             codecov: true
             php-ini-values: assert.exception=1, zend.assertions=1, opcache.enable=1, opcache.enable_cli=1, opcache.optimization_level=-1, opcache.jit_buffer_size=4096M, opcache.jit=1205
+
+          - os: ubuntu-latest
+            php-version: "8.4"
+            dependencies: highest
+            codecov: true
+            php-ini-values: assert.exception=1, zend.assertions=1, opcache.enable=1, opcache.enable_cli=1, opcache.optimization_level=-1, opcache.jit_buffer_size=4096M, opcache.jit=1205
+
+          - os: ubuntu-latest
+            php-version: "8.5"
+            dependencies: highest
+            codecov: true
+            php-ini-values: assert.exception=1, zend.assertions=1, opcache.enable=1, opcache.enable_cli=1, opcache.optimization_level=-1, opcache.jit_buffer_size=4096M, opcache.jit=1205
+
+          - os: ubuntu-latest
+            php-version: "8.0"
+            dependencies: highest
+            symfony: "5"
+
+          - os: ubuntu-latest
+            php-version: "8.1"
+            dependencies: highest
+            symfony: "6"
+
+          - os: ubuntu-latest
+            php-version: "8.2"
+            dependencies: highest
+            symfony: "7"
+
+          - os: ubuntu-latest
+            php-version: "8.5"
+            dependencies: highest
+            symfony: "8"
 
     steps:
       - name: Checkout
@@ -136,7 +163,7 @@ jobs:
         run: Add-Content -Path $ENV:GITHUB_ENV -Value "COMPOSER_CACHE_DIR=~\AppData\Local\Composer"
 
       - name: Cache dependencies installed with composer
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ${{ env.COMPOSER_CACHE_DIR }}
           key: php${{ matrix.php-version }}-composer-${{ matrix.dependencies }}-${{ hashFiles('**/composer.json') }}
@@ -162,6 +189,10 @@ jobs:
       - name: Install highest dependencies with composer
         if: matrix.dependencies == 'highest'
         run: composer update --no-ansi --no-interaction --no-progress
+
+      - name: Require Symfony ${{ matrix.symfony }}
+        if: matrix.symfony != ''
+        run: composer require --no-interaction --no-progress --with-all-dependencies symfony/console:^${{ matrix.symfony }}
 
       - name: Run tests with phpunit
         run: composer unit

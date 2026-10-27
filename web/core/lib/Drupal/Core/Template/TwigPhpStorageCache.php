@@ -10,9 +10,9 @@ use Twig\Cache\CacheInterface;
 /**
  * Provides an alternate cache storage for Twig using PhpStorage.
  *
- * This class is designed to work on setups with multiple webheads using a local
- * filesystem for the twig cache. When generating the cache key, a hash value
- * depending on the enabled extensions is included. This prevents stale
+ * This class is designed to work on setups with multiple web heads using a
+ * local filesystem for the twig cache. When generating the cache key, a hash
+ * value depending on the enabled extensions is included. This prevents stale
  * templates from being reused when twig extensions are enabled or disabled.
  *
  * @see \Drupal\Core\DependencyInjection\Compiler\TwigExtensionPass
@@ -73,8 +73,8 @@ class TwigPhpStorageCache implements CacheInterface {
   /**
    * {@inheritdoc}
    */
-  public function generateKey($name, $className) {
-    if (strpos($name, '{# inline_template_start #}') === 0) {
+  public function generateKey(string $name, string $className): string {
+    if (str_starts_with($name, '{# inline_template_start #}')) {
       // $name is an inline template, and can have characters that are not valid
       // for a filename. $suffix is unique for each inline template so we just
       // use the generic name 'inline-template' here.
@@ -82,6 +82,9 @@ class TwigPhpStorageCache implements CacheInterface {
     }
     else {
       $name = basename($name);
+      // Windows does not allow colons, which are used by Single Directory
+      // Components, in directory or file names.
+      $name = str_replace(':', '_', $name);
     }
 
     // Windows (and some encrypted Linux systems) only support 255 characters in
@@ -101,24 +104,24 @@ class TwigPhpStorageCache implements CacheInterface {
   /**
    * {@inheritdoc}
    */
-  public function load($key) {
+  public function load(string $key): void {
     $this->storage()->load($key);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function write($key, $content) {
+  public function write(string $key, string $content): void {
     $this->storage()->save($key, $content);
     // Save the last mtime.
     $cid = 'twig:' . $key;
-    $this->cache->set($cid, REQUEST_TIME);
+    $this->cache->set($cid, \Drupal::time()->getRequestTime());
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getTimestamp($key) {
+  public function getTimestamp(string $key): int {
     $cid = 'twig:' . $key;
     if ($cache = $this->cache->get($cid)) {
       return $cache->data;

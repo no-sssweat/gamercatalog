@@ -1,0 +1,125 @@
+/**
+ * @file
+ * Styles for admin lists.
+ */
+
+ul.admin-list {
+  margin: 0;
+  padding: 0;
+}
+
+.admin-list li {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+  list-style-image: none;
+  border-top: 1px solid #bfbfbf;
+}
+
+.admin-list.compact li {
+  border: none;
+}
+
+.admin-list li a {
+  display: block;
+  min-height: 0;
+  padding: 14px 15px 14px 25px; /* LTR */
+  background: url(../../images/icons/bebebe/chevron-disc-right.svg) no-repeat 1px 16px; /* LTR */
+}
+
+[dir="rtl"] .admin-list li a {
+  padding-right: 25px;
+  padding-left: 15px;
+  background: url(../../images/icons/bebebe/chevron-disc-left.svg) no-repeat right 16px;
+}
+
+.admin-list.compact li a {
+  padding: 2px 0;
+  background-image: none;
+}
+
+.admin-list li a:hover,
+.admin-list li a:focus,
+.admin-list li a:active {
+  text-decoration: none;
+}
+
+.admin-list li a .label {
+  font-size: 1.0769em;
+}
+
+.admin-list li a:hover .label,
+.admin-list li a:focus .label,
+.admin-list li a:active .label {
+  text-decoration: underline;
+}
+
+/**
+ * These styles have been added to avoid issues with descriptions containing
+ * links.
+ *
+ * See https://www.drupal.org/project/seven/issues/2688793
+ */
+ul.admin-entity-list {
+  margin: 0;
+  padding: 0;
+}
+
+.admin-entity-list li {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+  list-style-image: none;
+  border-top: 1px solid #bfbfbf;
+}
+
+.admin-entity-list.compact li {
+  border: none;
+}
+
+.admin-entity-list li a {
+  display: block;
+  min-height: 0;
+  padding: 14px 15px 14px 25px; /* LTR */
+  background: url(../../images/icons/bebebe/chevron-disc-right.svg) no-repeat 1px 16px; /* LTR */
+}
+
+[dir="rtl"] .admin-entity-list li a {
+  padding-right: 25px;
+  padding-left: 15px;
+  background: url(../../images/icons/bebebe/chevron-disc-left.svg) no-repeat right 16px;
+}
+
+.admin-entity-list.compact li a {
+  padding: 2px 0;
+  background-image: none;
+}
+
+.admin-entity-list li a:hover,
+.admin-entity-list li a:focus,
+.admin-entity-list li a:active {
+  text-decoration: none;
+}
+
+.admin-entity-list li a .label {
+  font-size: 1.0769em;
+  font-weight: normal;
+}
+
+.admin-entity-list li .description {
+  padding: 0 0 0.8em 0;
+}
+
+.admin-entity-list li .description a {
+  display: inline;
+  padding: 0;
+  background-image: none;
+}
+
+.admin-entity-list li a:hover .label,
+.admin-entity-list li a:focus .label,
+.admin-entity-list li a:active .label {
+  text-decoration: underline;
+}

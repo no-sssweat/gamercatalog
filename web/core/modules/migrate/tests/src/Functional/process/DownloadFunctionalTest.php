@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\Tests\migrate\Functional\process;
 
 use Drupal\migrate\MigrateExecutable;
@@ -29,15 +31,16 @@ class DownloadFunctionalTest extends BrowserTestBase {
   /**
    * Tests that an exception is thrown bu migration continues with the next row.
    */
-  public function testExceptionThrow() {
+  public function testExceptionThrow(): void {
     $invalid_url = "{$this->baseUrl}/not-existent-404";
+    $invalid_uri = "public://first.txt";
     $valid_url = "{$this->baseUrl}/core/misc/favicon.ico";
 
     $definition = [
       'source' => [
         'plugin' => 'embedded_data',
         'data_rows' => [
-          ['url' => $invalid_url, 'uri' => 'public://first.txt'],
+          ['url' => $invalid_url, 'uri' => $invalid_uri],
           ['url' => $valid_url, 'uri' => 'public://second.ico'],
         ],
         'ids' => [
@@ -82,6 +85,9 @@ class DownloadFunctionalTest extends BrowserTestBase {
     $this->assertStringContainsString("$id:uri:download:", $message->message);
     $this->assertStringContainsString($invalid_url, $message->message);
     $this->assertEquals(MigrationInterface::MESSAGE_ERROR, $message->level);
+
+    // Check that no file was created for the failed request.
+    $this->assertFileDoesNotExist($invalid_uri);
 
     // Check that the second row was migrated successfully.
     $map_row = $id_map_plugin->getRowBySource(['url' => $valid_url]);

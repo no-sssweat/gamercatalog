@@ -1,0 +1,12 @@
+/**
+ * @file
+ * Styles for the table sort indicator.
+ */
+
+th.is-active img {
+  display: inline;
+}
+
+td.is-active {
+  background-color: #ddd;
+}

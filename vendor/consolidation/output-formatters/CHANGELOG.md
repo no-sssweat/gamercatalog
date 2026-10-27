@@ -1,5 +1,49 @@
 # Change Log
 
+### 4.7.1 - 28 Mar 2026
+
+- Allow Symfony 8 (#116)
+- Add Symfony major version matrix to CI (#117)
+
+### 4.7.0 - 14 Nov 2025
+
+- setInput now returns $this (#113)
+- PHP 8.5 support
+
+### 4.6.0 - 18 Oct 2024
+
+- Add setTableDefaultFields method to FormatterOptions
+
+### 4.5.0 - 2 Apr 2024
+
+- Support Symfony 7 (#111)
+
+### 4.4.0 - 20 Mar 2024
+
+- Make table headers optional when table is empty (#108)
+
+### 4.3.2 - 5 Jul 2023
+
+- Make var-dump and var-export usable for non-arrays (#109)
+- Wordwrap fix for tables (#107)
+
+### 4.3.1, 4.3.0 - 19 May 2023
+
+- Add an accessor to get selected fields from the formatter object. (#104)
+- Add convenience function FormatterOptions::fieldsContain() (#105)
+
+### 4.2.4 - 23 Feb 2023
+
+- Minor dynamic property fix for PHP 8.2.
+
+### 4.2.3 - 16 Oct 2022
+
+- Various PHP 8.1 compatibility fixes (warnings)
+
+### 4.2.2 - 13 Feb 2022
+
+- Allow dflydev/dot-access-data ^2 and ^3 (#98)
+
 ### 4.2.1 - 29 Dec 2021
 
 - PHP 8.1

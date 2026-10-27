@@ -1,0 +1,21 @@
+/**
+ * @file
+ * Styles for node add.
+ */
+
+.layout-region-node-footer__content {
+  margin-top: 1.5em;
+  padding-top: 0.5em;
+  border-top: 1px solid #bebfb9;
+}
+
+/**
+ * Widescreen styles.
+ *
+ * The following media queries must exactly match what is in node.module.css.
+ */
+@media screen and (min-width: 780px), (orientation: landscape) and (min-device-height: 780px) {
+  .layout-region-node-footer__content {
+    margin-top: 0.5em;
+  }
+}

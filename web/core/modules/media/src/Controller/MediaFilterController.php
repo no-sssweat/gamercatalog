@@ -8,6 +8,7 @@ use Drupal\Core\Entity\ContentEntityStorageInterface;
 use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\filter\FilterFormatInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -24,6 +25,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  *   instantiated or extended by external code.
  */
 class MediaFilterController implements ContainerInjectionInterface {
+
+  use StringTranslationTrait;
 
   /**
    * The renderer service.
@@ -108,13 +111,14 @@ class MediaFilterController implements ContainerInjectionInterface {
       '#text' => $text,
       '#format' => $filter_format->id(),
     ];
-    $html = $this->renderer->renderPlain($build);
+    $html = $this->renderer->renderInIsolation($build);
 
     // Load the media item so we can embed the label in the response, for use
     // in an ARIA label.
     $headers = [];
     if ($media = $this->entityRepository->loadEntityByUuid('media', $uuid)) {
-      $headers['Drupal-Media-Label'] = $this->entityRepository->getTranslationFromContext($media)->label();
+      $media = $this->entityRepository->getTranslationFromContext($media);
+      $headers['Drupal-Media-Label'] = $media->access('view label') ? $media->label() : $this->t('Media @id', ['@id' => $media->id()]);
     }
 
     // Note that we intentionally do not use:

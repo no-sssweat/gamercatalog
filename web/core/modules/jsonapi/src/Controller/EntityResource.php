@@ -245,7 +245,7 @@ class EntityResource {
       // User resource objects contain a read-only attribute that is not a
       // real field on the user entity type.
       // @see \Drupal\jsonapi\JsonApiResource\ResourceObject::extractContentEntityFields()
-      // @todo: eliminate this special casing in https://www.drupal.org/project/drupal/issues/3079254.
+      // @todo Eliminate this special casing in https://www.drupal.org/project/drupal/issues/3079254.
       if ($resource_type->getEntityTypeId() === 'user') {
         $field_mapping = array_diff($field_mapping, [$resource_type->getPublicName('display_name')]);
       }
@@ -315,11 +315,11 @@ class EntityResource {
 
     $body = Json::decode($request->getContent());
     $data = $body['data'];
-    if ($data['id'] != $entity->uuid()) {
+    if (!isset($data['id']) || $data['id'] != $entity->uuid()) {
       throw new BadRequestHttpException(sprintf(
         'The selected entity (%s) does not match the ID in the payload (%s).',
         $entity->uuid(),
-        $data['id']
+        $data['id'] ?? '',
       ));
     }
     $data += ['attributes' => [], 'relationships' => []];
@@ -328,7 +328,7 @@ class EntityResource {
     // User resource objects contain a read-only attribute that is not a real
     // field on the user entity type.
     // @see \Drupal\jsonapi\JsonApiResource\ResourceObject::extractContentEntityFields()
-    // @todo: eliminate this special casing in https://www.drupal.org/project/drupal/issues/3079254.
+    // @todo Eliminate this special casing in https://www.drupal.org/project/drupal/issues/3079254.
     if ($entity->getEntityTypeId() === 'user') {
       $field_names = array_diff($field_names, [$resource_type->getPublicName('display_name')]);
     }
@@ -429,7 +429,7 @@ class EntityResource {
       // For example: getting users with a particular role, which is a config
       // entity type: https://www.drupal.org/project/drupal/issues/2959445.
       // @todo Remove the message parsing in https://www.drupal.org/project/drupal/issues/3028967.
-      if (strpos($e->getMessage(), 'Getting the base fields is not supported for entity type') === 0) {
+      if (str_starts_with($e->getMessage(), 'Getting the base fields is not supported for entity type')) {
         preg_match('/entity type (.*)\./', $e->getMessage(), $matches);
         $config_entity_type_id = $matches[1];
         $cacheability = (new CacheableMetadata())->addCacheContexts(['url.path', 'url.query_args:filter']);
@@ -633,6 +633,10 @@ class EntityResource {
       throw new ConflictHttpException(sprintf('You can only POST to to-many relationships. %s is a to-one relationship.', $related));
     }
 
+    // @todo Inject the plugin manager service.
+    $definition = \Drupal::service('plugin.manager.field.field_type')->getDefinition($field_definition->getType());
+    $serialized_property_names = $definition['serialized_property_names'] ?? [];
+
     $original_resource_identifiers = ResourceIdentifier::toResourceIdentifiersWithArityRequired($field_list);
     $new_resource_identifiers = array_udiff(
       ResourceIdentifier::deduplicate(array_merge($original_resource_identifiers, $resource_identifiers)),
@@ -646,12 +650,22 @@ class EntityResource {
       return $this->getRelationship($resource_type, $entity, $related, $request, $status);
     }
 
-    $main_property_name = $field_definition->getItemDefinition()->getMainPropertyName();
     foreach ($new_resource_identifiers as $new_resource_identifier) {
-      $new_field_value = [$main_property_name => $this->getEntityFromResourceIdentifier($new_resource_identifier)->id()];
+      // We assume all entity reference fields have an 'entity' computed
+      // property that can be used to assign the needed values.
+      $new_field_value = ['entity' => $this->getEntityFromResourceIdentifier($new_resource_identifier)];
       // Remove `arity` from the received extra properties, otherwise this
       // will fail field validation.
-      $new_field_value += array_diff_key($new_resource_identifier->getMeta(), array_flip([ResourceIdentifier::ARITY_KEY]));
+      $meta = array_diff_key($new_resource_identifier->getMeta(), array_flip([ResourceIdentifier::ARITY_KEY]));
+      foreach ($serialized_property_names as $property_name) {
+        if (isset($meta[$property_name]) && is_string($meta[$property_name])) {
+          throw new BadRequestHttpException(sprintf(
+            'The relationship meta field "%s" cannot accept a serialized string value.',
+            $property_name,
+          ));
+        }
+      }
+      $new_field_value += $meta;
       $field_list->appendItem($new_field_value);
     }
 
@@ -734,12 +748,26 @@ class EntityResource {
    *   The field definition of the entity field to be updated.
    */
   protected function doPatchMultipleRelationship(EntityInterface $entity, array $resource_identifiers, FieldDefinitionInterface $field_definition) {
-    $main_property_name = $field_definition->getItemDefinition()->getMainPropertyName();
-    $entity->{$field_definition->getName()} = array_map(function (ResourceIdentifier $resource_identifier) use ($main_property_name) {
-      $field_properties = [$main_property_name => $this->getEntityFromResourceIdentifier($resource_identifier)->id()];
+    // @todo Inject the plugin manager service.
+    $definition = \Drupal::service('plugin.manager.field.field_type')->getDefinition($field_definition->getType());
+    $serialized_property_names = $definition['serialized_property_names'] ?? [];
+
+    $entity->{$field_definition->getName()} = array_map(function (ResourceIdentifier $resource_identifier) use ($serialized_property_names) {
+      // We assume all entity reference fields have an 'entity' computed
+      // property that can be used to assign the needed values.
+      $field_properties = ['entity' => $this->getEntityFromResourceIdentifier($resource_identifier)];
       // Remove `arity` from the received extra properties, otherwise this
       // will fail field validation.
-      $field_properties += array_diff_key($resource_identifier->getMeta(), array_flip([ResourceIdentifier::ARITY_KEY]));
+      $meta = array_diff_key($resource_identifier->getMeta(), array_flip([ResourceIdentifier::ARITY_KEY]));
+      foreach ($serialized_property_names as $property_name) {
+        if (isset($meta[$property_name]) && is_string($meta[$property_name])) {
+          throw new BadRequestHttpException(sprintf(
+            'The relationship meta field "%s" cannot accept a serialized string value.',
+            $property_name,
+          ));
+        }
+      }
+      $field_properties += $meta;
       return $field_properties;
     }, $resource_identifiers);
   }
@@ -1011,7 +1039,7 @@ class EntityResource {
    * @return \Drupal\jsonapi\ResourceResponse
    *   The response.
    */
-  protected function buildWrappedResponse(TopLevelDataInterface $data, Request $request, IncludedData $includes, $response_code = 200, array $headers = [], LinkCollection $links = NULL, array $meta = []) {
+  protected function buildWrappedResponse(TopLevelDataInterface $data, Request $request, IncludedData $includes, $response_code = 200, array $headers = [], ?LinkCollection $links = NULL, array $meta = []) {
     $links = ($links ?: new LinkCollection([]));
     if (!$links->hasLinkWithKey('self')) {
       $self_link = new Link(new CacheableMetadata(), self::getRequestLink($request), 'self');
@@ -1235,13 +1263,13 @@ class EntityResource {
    */
   protected function getJsonApiParams(Request $request, ResourceType $resource_type) {
     if ($request->query->has('filter')) {
-      $params[Filter::KEY_NAME] = Filter::createFromQueryParameter($request->query->get('filter'), $resource_type, $this->fieldResolver);
+      $params[Filter::KEY_NAME] = Filter::createFromQueryParameter($request->query->all('filter'), $resource_type, $this->fieldResolver);
     }
     if ($request->query->has('sort')) {
-      $params[Sort::KEY_NAME] = Sort::createFromQueryParameter($request->query->get('sort'));
+      $params[Sort::KEY_NAME] = Sort::createFromQueryParameter($request->query->all()['sort']);
     }
     if ($request->query->has('page')) {
-      $params[OffsetPage::KEY_NAME] = OffsetPage::createFromQueryParameter($request->query->get('page'));
+      $params[OffsetPage::KEY_NAME] = OffsetPage::createFromQueryParameter($request->query->all('page'));
     }
     else {
       $params[OffsetPage::KEY_NAME] = OffsetPage::createFromQueryParameter(['page' => ['offset' => OffsetPage::DEFAULT_OFFSET, 'limit' => OffsetPage::SIZE_MAX]]);

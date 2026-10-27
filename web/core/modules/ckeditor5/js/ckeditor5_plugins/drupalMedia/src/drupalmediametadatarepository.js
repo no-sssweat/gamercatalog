@@ -1,5 +1,5 @@
 /* eslint-disable import/no-extraneous-dependencies */
-/* cspell:words drupalmediametadatarepository */
+/* cspell:ignore drupalmediametadatarepository */
 
 import { Plugin } from 'ckeditor5/src/core';
 
@@ -40,7 +40,7 @@ export default class DrupalMediaMetadataRepository extends Plugin {
   /**
    * Gets metadata for a `drupalMedia` model element.
    *
-   * @param {module:engine/model/element~Element} modelElement
+   * @param {module:engine/model/element~ModelElement} modelElement
    *   The model element from which metadata should be retrieved.
    *
    * @return {Promise<Object>}

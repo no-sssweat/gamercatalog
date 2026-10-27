@@ -1,10 +1,10 @@
 name: gc
-recipe: drupal9
+recipe: drupal10
 config:
   webroot: web
 services:
   appserver:
-    type: php:7.4
+    type: php:8.3
     xdebug: true
     config:
       php: .lando/php.ini
@@ -13,3 +13,4 @@ services:
         PHP_IDE_CONFIG: "serverName=appserver"
         LANDO_HOST_IP: "host.docker.internal"
         XDEBUG_CONFIG: "remote_enable=1 remote_host=host.docker.internal"
+        DRUSH_OPTIONS_URI: 'https://gc.lndo.site'

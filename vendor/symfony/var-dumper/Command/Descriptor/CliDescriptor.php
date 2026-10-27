@@ -27,8 +27,8 @@ use Symfony\Component\VarDumper\Dumper\CliDumper;
  */
 class CliDescriptor implements DumpDescriptorInterface
 {
-    private $dumper;
-    private $lastIdentifier;
+    private CliDumper $dumper;
+    private mixed $lastIdentifier = null;
 
     public function __construct(CliDumper $dumper)
     {
@@ -48,7 +48,7 @@ class CliDescriptor implements DumpDescriptorInterface
         if (isset($context['request'])) {
             $request = $context['request'];
             $this->lastIdentifier = $request['identifier'];
-            $section = sprintf('%s %s', self::escape($request['method']), self::escape($request['uri']));
+            $section = \sprintf('%s %s', self::escape($request['method']), self::escape($request['uri']));
             if ($controller = $request['controller']) {
                 $rows[] = ['controller', OutputFormatter::escape(rtrim($this->dumper->dump($controller, true), "\n"))];
             }
@@ -63,9 +63,9 @@ class CliDescriptor implements DumpDescriptorInterface
 
         if (isset($context['source'])) {
             $source = $context['source'];
-            $sourceInfo = sprintf('%s on line %d', self::escape($source['name']), $source['line']);
+            $sourceInfo = \sprintf('%s on line %d', self::escape($source['name']), $source['line']);
             if ($fileLink = $source['file_link'] ?? null) {
-                $sourceInfo = sprintf('<href=%s>%s</>', self::escape($fileLink), $sourceInfo);
+                $sourceInfo = \sprintf('<href=%s>%s</>', self::escape($fileLink), $sourceInfo);
             }
             $rows[] = ['source', $sourceInfo];
             $file = $source['file_relative'] ?? $source['file'];
