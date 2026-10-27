@@ -8,7 +8,7 @@ use Drupal\node\NodeInterface;
 
 class CryptoTestController extends ControllerBase {
 
-  function binanceConnect($symbol, $test_id, $buy_or_sell) {
+  public function binanceConnect($symbol, $test_id, $buy_or_sell) {
     $time = time();
     $recvWindow = 99999999999999999;
     $domain = 'https://fapi.binance.com';
@@ -123,9 +123,9 @@ class CryptoTestController extends ControllerBase {
 //    $node = reset($nodes);
 
     $query = \Drupal::entityTypeManager()
-      ->getListBuilder('node')
-      ->getStorage()
-      ->getQuery();
+      ->getStorage('node')
+      ->getQuery()
+      ->accessCheck(FALSE);
     $query->condition('type', 'crypto');
     $query->condition('title', $test_id);
     $query->condition('status', 1);
@@ -136,7 +136,7 @@ class CryptoTestController extends ControllerBase {
     $nids = $query->execute();
     $nid = reset($nids);
 
-    $node = NODE::load($nid);
+    $node = Node::load($nid);
 
     return $node;
   }

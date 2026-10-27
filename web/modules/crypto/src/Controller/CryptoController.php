@@ -8,7 +8,7 @@ use Drupal\node\NodeInterface;
 
 class CryptoController extends ControllerBase {
 
-  function binanceConnect($symbol, $dollar_amount, $buy_or_sell) {
+  public function binanceConnect($symbol, $dollar_amount, $buy_or_sell) {
     $time = time();
     $recvWindow = 99999999999999999;
     $domain = 'https://fapi.binance.com';
@@ -104,7 +104,7 @@ class CryptoController extends ControllerBase {
 
     $query_array['quantity'] = $quantity_to_order;
 
-    $response = $this-> connectToBinance($query_array, $domain, $path, 'POST');
+    $response = $this->connectToBinance($query_array, $domain, $path, 'POST');
     $response_array = json_decode($response,true);
 
     if (empty($response_array['orderId'])) {
@@ -190,9 +190,9 @@ class CryptoController extends ControllerBase {
 //    return $node;
 
     $query = \Drupal::entityTypeManager()
-      ->getListBuilder('node')
-      ->getStorage()
-      ->getQuery();
+      ->getStorage('node')
+      ->getQuery()
+      ->accessCheck(FALSE);
     $query->condition('type', 'crypto_live');
     $query->condition('status', 1);
     $query->condition('field_symbol', $symbol);
@@ -202,7 +202,7 @@ class CryptoController extends ControllerBase {
     $nids = $query->execute();
     $nid = reset($nids);
 
-    $node = NODE::load($nid);
+    $node = Node::load($nid);
 
     return $node;
   }
