@@ -100,7 +100,18 @@ class CryptoTestController2 extends ControllerBase {
     ));
 
     $response = curl_exec($curl);
+    $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($curl);
     curl_close($curl);
+
+    if ($response === FALSE || $http_code !== 200) {
+      \Drupal::logger('crypto')->error('Binance request failed. URL: @url | HTTP: @code | cURL error: @error | Body: @body', [
+        '@url' => $domain . $path,
+        '@code' => $http_code,
+        '@error' => $curl_error ?: 'none',
+        '@body' => is_string($response) ? mb_substr($response, 0, 500) : '',
+      ]);
+    }
 
     return $response;
   }
