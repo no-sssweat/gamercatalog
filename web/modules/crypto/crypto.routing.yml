@@ -10,3 +10,9 @@ crypto.webhook2:
     _controller: '\Drupal\crypto\Controller\CryptoTestController::binanceConnect'
   requirements:
     _access: 'TRUE'
+crypto.webhook3:
+  path: 'test2/{symbol}/{test_id}/{buy_or_sell}'
+  defaults:
+    _controller: '\Drupal\crypto\Controller\CryptoTestController2::binanceConnect'
+  requirements:
+    _access: 'TRUE'
