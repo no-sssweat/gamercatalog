@@ -16,3 +16,9 @@ crypto.webhook3:
     _controller: '\Drupal\crypto\Controller\CryptoTestController2::binanceConnect'
   requirements:
     _access: 'TRUE'
+crypto.webhook4:
+  path: 'test2/{symbol}/{test_id}/{buy_or_sell}/exit'
+  defaults:
+    _controller: '\Drupal\crypto\Controller\CryptoTestController2::exitTrade'
+  requirements:
+    _access: 'TRUE'

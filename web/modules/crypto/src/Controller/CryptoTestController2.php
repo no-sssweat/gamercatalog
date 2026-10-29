@@ -15,59 +15,8 @@ class CryptoTestController2 extends ControllerBase {
   const DEFAULT_PRICE_SOURCE = 'binance_futures';
 
   public function binanceConnect($symbol, $test_id, $buy_or_sell) {
-    $existing_node = $this->getExistingNode($symbol, $test_id);
-
-    if ($existing_node instanceof NodeInterface) {
-      $trend = $existing_node->field_trend->value;
-      if ($buy_or_sell == $trend) {
-        return [
-          '#markup' => 'nvm',
-        ];
-      }
-
-      $current_price = $this->getMarkPrice($symbol);
-      if ($current_price === NULL) {
-        // Leave the trade open so it can be closed on the next signal.
-        return [
-          '#markup' => 'Failed to get price for ' . $symbol . '; trade left open.',
-        ];
-      }
-
-      // set node to unpublished
-      $existing_node->status = 0;
-      $existing_node->field_exit_price->value = $current_price;
-
-      $entry_price = (float) $existing_node->field_entry_price->value;
-      $exit_price = (float) $current_price;
-
-      if ($entry_price <= 0) {
-        // Bad entry price (e.g. trade was opened when no price was returned).
-        // Close the trade without calculating a change.
-        \Drupal::logger('crypto')->error('Node @nid has no valid entry price; closing without change.', [
-          '@nid' => $existing_node->id(),
-        ]);
-        $existing_node->save();
-        return [
-          '#markup' => 'Closed Order ID: ' . $existing_node->getTitle() . ' (no valid entry price)',
-        ];
-      }
-
-      if ($existing_node->field_trend->value == 'BUY') {
-        $change = (($exit_price - $entry_price) / $entry_price) * 100;
-      }
-      else {
-        $change = (($entry_price - $exit_price) / $entry_price) * 100;
-      }
-      $change = number_format((float)$change, 5, '.', '');
-      $existing_node->field_change->value = $change;
-      $existing_node->save();
-
-      // Trade closed; don't open a new one.
-      return [
-        '#markup' => 'Closed Order ID: ' . $existing_node->getTitle() . ' (change: ' . $change . '%)',
-      ];
-    }
-
+    // Exiting trades is handled by exitTrade()
+    // (test2/{symbol}/{test_id}/{buy_or_sell}/exit).
     $current_price = $this->getMarkPrice($symbol);
     if ($current_price === NULL) {
       // Don't open a trade with no entry price.
@@ -83,6 +32,101 @@ class CryptoTestController2 extends ControllerBase {
     return [
       '#markup' => 'Order ID: ' . $binance_id,
     ];
+  }
+
+  /**
+   * Exits the open trade for a symbol and direction.
+   *
+   * Loads the published node with the same symbol and buy_or_sell (trend),
+   * sets its exit price to the current Binance price and unpublishes it.
+   * Never opens a new trade.
+   *
+   * Route: test2/{symbol}/{test_id}/{buy_or_sell}/exit
+   */
+  public function exitTrade($symbol, $test_id, $buy_or_sell) {
+    $existing_node = $this->getOpenNodeByTrend($symbol, $buy_or_sell);
+
+    if (!$existing_node instanceof NodeInterface) {
+      return [
+        '#markup' => 'No open ' . $buy_or_sell . ' trade for ' . $symbol . '; nothing to exit.',
+      ];
+    }
+
+    $current_price = $this->getMarkPrice($symbol);
+    if ($current_price === NULL) {
+      // Leave the trade open so it can be exited on the next signal.
+      return [
+        '#markup' => 'Failed to get price for ' . $symbol . '; trade left open.',
+      ];
+    }
+
+    $existing_node->field_exit_price->value = $current_price;
+
+    $entry_price = (float) $existing_node->field_entry_price->value;
+    $exit_price = (float) $current_price;
+    $change = NULL;
+
+    // Only calculate the change when there's a valid entry price.
+    if ($entry_price > 0) {
+      if ($existing_node->field_trend->value == 'BUY') {
+        $change = (($exit_price - $entry_price) / $entry_price) * 100;
+      }
+      else {
+        $change = (($entry_price - $exit_price) / $entry_price) * 100;
+      }
+      $change = number_format((float) $change, 5, '.', '');
+      $existing_node->field_change->value = $change;
+    }
+    else {
+      \Drupal::logger('crypto')->error('Node @nid has no valid entry price; exiting without change.', [
+        '@nid' => $existing_node->id(),
+      ]);
+    }
+
+    // set node to unpublished
+    $existing_node->status = 0;
+    $existing_node->save();
+
+    return [
+      '#markup' => 'Exited Order ID: ' . $existing_node->getTitle()
+        . ' at ' . $current_price
+        . ($change !== NULL ? ' (change: ' . $change . '%)' : ' (no valid entry price)'),
+    ];
+  }
+
+  /**
+   * Loads the oldest published crypto node for a symbol and trend.
+   *
+   * @param string $symbol
+   *   Symbol, e.g. BTCUSDT.
+   * @param string $buy_or_sell
+   *   Trend, e.g. BUY or SELL.
+   *
+   * @return \Drupal\node\NodeInterface|null
+   *   The node, or NULL if there is no open trade.
+   */
+  public function getOpenNodeByTrend($symbol, $buy_or_sell) {
+    $query = \Drupal::entityTypeManager()
+      ->getStorage('node')
+      ->getQuery()
+      ->accessCheck(FALSE);
+    $query->condition('type', 'crypto');
+    $query->condition('status', 1);
+    $query->condition('field_symbol', $symbol);
+    $query->condition('field_trend', $buy_or_sell);
+    // If more than one open trade matches, exit the oldest first.
+    $query->sort('created', 'ASC');
+    $query->sort('nid', 'ASC');
+    $query->range(0, 1);
+
+    $nids = $query->execute();
+    $nid = reset($nids);
+
+    if ($nid) {
+      return Node::load($nid);
+    }
+
+    return NULL;
   }
 
   /**
