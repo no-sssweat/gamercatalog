@@ -8,7 +8,7 @@ use Drupal\node\NodeInterface;
 
 class CryptoController extends ControllerBase {
 
-  public function binanceConnect($symbol, $dollar_amount, $buy_or_sell) {
+  public function binanceConnect($symbol, $dollar_amount, $trend) {
     $time = time();
     $recvWindow = 99999999999999999;
     $domain = 'https://fapi.binance.com';
@@ -19,7 +19,7 @@ class CryptoController extends ControllerBase {
 
     $query_array = [
       'symbol' => $symbol,
-      'side' => $buy_or_sell,
+      'side' => $trend,
       'type' => 'MARKET',
       'recvWindow' => $recvWindow,
       'timestamp' => $time,
@@ -27,8 +27,8 @@ class CryptoController extends ControllerBase {
     ];
 
     if ($existing_node instanceof NodeInterface) {
-      $trend = $existing_node->field_trend->value;
-      if ($buy_or_sell == $trend) {
+      $existing_trend = $existing_node->field_trend->value;
+      if ($trend == $existing_trend) {
         return [
           '#markup' => 'nvm',
         ];
@@ -120,7 +120,7 @@ class CryptoController extends ControllerBase {
 
     $current_price = $response_array['avgPrice'];
 
-    $this->createNode($symbol, $binance_id, $buy_or_sell, $current_price, $quantity);
+    $this->createNode($symbol, $binance_id, $trend, $current_price, $quantity);
 
     return [
       '#markup' => 'Order ID: ' . $binance_id
@@ -158,12 +158,12 @@ class CryptoController extends ControllerBase {
     return $response;
   }
 
-  public function createNode($symbol, $binance_id, $buy_or_sell, $current_price, $quantity) {
+  public function createNode($symbol, $binance_id, $trend, $current_price, $quantity) {
     $node = \Drupal::entityTypeManager()->getStorage('node')->create(array(
       'type' => 'crypto_live',
       'title' => $binance_id,
       'field_symbol' => $symbol,
-      'field_trend' => $buy_or_sell,
+      'field_trend' => $trend,
       'field_entry_price' => $current_price,
       'field_quantity' => $quantity,
       'status' => 1,

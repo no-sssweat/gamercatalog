@@ -14,9 +14,17 @@ class CryptoTestController2 extends ControllerBase {
    */
   const DEFAULT_PRICE_SOURCE = 'binance_futures';
 
-  public function binanceConnect($symbol, $test_id, $buy_or_sell) {
+  public function binanceConnect($symbol, $test_id, $trend) {
     // Exiting trades is handled by exitTrade()
-    // (test2/{symbol}/{test_id}/{buy_or_sell}/exit).
+    // (test2/{symbol}/{test_id}/{trend}/exit).
+
+    // A trade with the same symbol and trend is already open: do nothing.
+    if ($this->getOpenNodeByTrend($symbol, $trend) instanceof NodeInterface) {
+      return [
+        '#markup' => 'nvm',
+      ];
+    }
+
     $current_price = $this->getMarkPrice($symbol);
     if ($current_price === NULL) {
       // Don't open a trade with no entry price.
@@ -27,7 +35,7 @@ class CryptoTestController2 extends ControllerBase {
 
     $binance_id = $test_id;
 
-    $this->createNode($symbol, $binance_id, $buy_or_sell, $current_price);
+    $this->createNode($symbol, $binance_id, $trend, $current_price);
 
     return [
       '#markup' => 'Order ID: ' . $binance_id,
@@ -37,18 +45,18 @@ class CryptoTestController2 extends ControllerBase {
   /**
    * Exits the open trade for a symbol and direction.
    *
-   * Loads the published node with the same symbol and buy_or_sell (trend),
+   * Loads the published node with the same symbol and trend,
    * sets its exit price to the current Binance price and unpublishes it.
    * Never opens a new trade.
    *
-   * Route: test2/{symbol}/{test_id}/{buy_or_sell}/exit
+   * Route: test2/{symbol}/{test_id}/{trend}/exit
    */
-  public function exitTrade($symbol, $test_id, $buy_or_sell) {
-    $existing_node = $this->getOpenNodeByTrend($symbol, $buy_or_sell);
+  public function exitTrade($symbol, $test_id, $trend) {
+    $existing_node = $this->getOpenNodeByTrend($symbol, $trend);
 
     if (!$existing_node instanceof NodeInterface) {
       return [
-        '#markup' => 'No open ' . $buy_or_sell . ' trade for ' . $symbol . '; nothing to exit.',
+        '#markup' => 'No open ' . $trend . ' trade for ' . $symbol . '; nothing to exit.',
       ];
     }
 
@@ -99,13 +107,13 @@ class CryptoTestController2 extends ControllerBase {
    *
    * @param string $symbol
    *   Symbol, e.g. BTCUSDT.
-   * @param string $buy_or_sell
+   * @param string $trend
    *   Trend, e.g. BUY or SELL.
    *
    * @return \Drupal\node\NodeInterface|null
    *   The node, or NULL if there is no open trade.
    */
-  public function getOpenNodeByTrend($symbol, $buy_or_sell) {
+  public function getOpenNodeByTrend($symbol, $trend) {
     $query = \Drupal::entityTypeManager()
       ->getStorage('node')
       ->getQuery()
@@ -113,7 +121,7 @@ class CryptoTestController2 extends ControllerBase {
     $query->condition('type', 'crypto');
     $query->condition('status', 1);
     $query->condition('field_symbol', $symbol);
-    $query->condition('field_trend', $buy_or_sell);
+    $query->condition('field_trend', $trend);
     // If more than one open trade matches, exit the oldest first.
     $query->sort('created', 'ASC');
     $query->sort('nid', 'ASC');
@@ -275,12 +283,12 @@ class CryptoTestController2 extends ControllerBase {
     return $response;
   }
 
-  public function createNode($symbol, $binance_id, $buy_or_sell, $current_price) {
+  public function createNode($symbol, $binance_id, $trend, $current_price) {
     $node = \Drupal::entityTypeManager()->getStorage('node')->create(array(
       'type' => 'crypto',
       'title' => $binance_id,
       'field_symbol' => $symbol,
-      'field_trend' => $buy_or_sell,
+      'field_trend' => $trend,
       'field_entry_price' => $current_price,
       'status' => 1,
     ));
