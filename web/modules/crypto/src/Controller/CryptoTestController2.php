@@ -76,7 +76,7 @@ class CryptoTestController2 extends ControllerBase {
 
     // Only calculate the change when there's a valid entry price.
     if ($entry_price > 0) {
-      if ($existing_node->field_trend->value == 'BUY') {
+      if ($existing_node->field_trend->value == 'long') {
         $change = (($exit_price - $entry_price) / $entry_price) * 100;
       }
       else {
@@ -108,7 +108,7 @@ class CryptoTestController2 extends ControllerBase {
    * @param string $symbol
    *   Symbol, e.g. BTCUSDT.
    * @param string $trend
-   *   Trend, e.g. BUY or SELL.
+   *   Trend, e.g. long or short.
    *
    * @return \Drupal\node\NodeInterface|null
    *   The node, or NULL if there is no open trade.
