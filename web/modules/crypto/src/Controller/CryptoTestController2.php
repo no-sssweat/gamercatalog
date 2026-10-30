@@ -3,16 +3,15 @@
 namespace Drupal\crypto\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
-use Drupal\Core\Site\Settings;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 
 class CryptoTestController2 extends ControllerBase {
 
   /**
-   * Price source used when crypto_price_source is not set in settings.php.
+   * WEEX futures public symbol price endpoint.
    */
-  const DEFAULT_PRICE_SOURCE = 'binance_futures';
+  const WEEX_SYMBOL_PRICE_URL = 'https://api-contract.weex.com/capi/v3/market/symbolPrice';
 
   public function binanceConnect($symbol, $test_id, $trend) {
     // Exiting trades is handled by exitTrade()
@@ -138,58 +137,42 @@ class CryptoTestController2 extends ControllerBase {
   }
 
   /**
-   * Gets the current price for a symbol from the configured price source.
+   * Gets the current futures mark price for a symbol from WEEX.
    *
-   * Configure in settings.php:
-   * @code
-   * // Binance.com USDⓈ-M futures mark price (blocked from US IPs).
-   * $settings['crypto_price_source'] = 'binance_futures';
-   * // Binance.US spot price (available from US IPs).
-   * $settings['crypto_price_source'] = 'binance_us';
-   * @endcode
+   * Uses the public WEEX futures endpoint (no API key required):
+   * GET https://api-contract.weex.com/capi/v3/market/symbolPrice
+   *   ?symbol=BTCUSDT&priceType=MARK
+   * Response: {"symbol":"BTCUSDT","price":"69348.5","time":1764505776890}
+   *
+   * @see https://www.weex.com/api-doc/catalog/core-trading-futures/api/rest-api/market-api#get-symbol-price
    *
    * @param string $symbol
    *   Symbol, e.g. BTCUSDT.
    *
    * @return string|null
-   *   Price formatted to 6 decimals, or NULL if no valid price was returned.
+   *   Price formatted to 8 decimals, or NULL if no valid price was returned.
    */
   public function getMarkPrice($symbol) {
-    $source = Settings::get('crypto_price_source', self::DEFAULT_PRICE_SOURCE);
+    $data = $this->fetchPublicJson(self::WEEX_SYMBOL_PRICE_URL, [
+      'symbol' => $symbol,
+      'priceType' => 'MARK',
+    ]);
 
-    switch ($source) {
-      case 'binance_us':
-        $url = 'https://api.binance.us/api/v3/ticker/price';
-        $price_key = 'price';
-        break;
-
-      case 'binance_futures':
-        $url = 'https://fapi.binance.com/fapi/v1/premiumIndex';
-        $price_key = 'markPrice';
-        break;
-
-      default:
-        \Drupal::logger('crypto')->error('Unknown crypto_price_source "@source".', ['@source' => $source]);
-        return NULL;
-    }
-
-    $data = $this->fetchPublicJson($url, ['symbol' => $symbol]);
-
-    // Binance returns {"code":-1121,"msg":"Invalid symbol."} when the pair
-    // isn't listed (e.g. a futures-only pair on Binance.US).
-    if (isset($data['code']) && (int) $data['code'] === -1121) {
-      \Drupal::logger('crypto')->error('Symbol @symbol is not listed on price source "@source".', [
+    // WEEX returns {"code":-1142,"msg":"Parameter 'symbol' is invalid."}
+    // when the symbol isn't listed.
+    if (isset($data['code'])) {
+      \Drupal::logger('crypto')->error('WEEX error for @symbol: @code @msg', [
         '@symbol' => $symbol,
-        '@source' => $source,
+        '@code' => $data['code'],
+        '@msg' => $data['msg'] ?? '',
       ]);
       return NULL;
     }
 
-    $price = isset($data[$price_key]) ? (float) $data[$price_key] : 0.0;
+    $price = isset($data['price']) ? (float) $data['price'] : 0.0;
     if ($price <= 0) {
-      \Drupal::logger('crypto')->error('No valid price for @symbol from "@source". Response: @response', [
+      \Drupal::logger('crypto')->error('No valid price for @symbol from WEEX. Response: @response', [
         '@symbol' => $symbol,
-        '@source' => $source,
         '@response' => json_encode($data),
       ]);
       return NULL;
