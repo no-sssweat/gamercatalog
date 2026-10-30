@@ -82,7 +82,7 @@ class CryptoTestController2 extends ControllerBase {
       else {
         $change = (($entry_price - $exit_price) / $entry_price) * 100;
       }
-      $change = number_format((float) $change, 5, '.', '');
+      $change = number_format((float) $change, 8, '.', '');
       $existing_node->field_change->value = $change;
     }
     else {
@@ -195,7 +195,7 @@ class CryptoTestController2 extends ControllerBase {
       return NULL;
     }
 
-    return number_format($price, 6, '.', '');
+    return number_format($price, 8, '.', '');
   }
 
   /**
